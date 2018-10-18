@@ -39,7 +39,7 @@ for i in */ ; do
 		"-std=gnu++17",
 	],
     "dependency": {
-        "kendryte-sdk": "https://s3.cn-northwest-1.amazonaws.com.cn/kendryte-ide/package-manager/internal/sdk-standalone-1.0.0.zip"
+        "kendryte-sdk": "https://s3.cn-northwest-1.amazonaws.com.cn/kendryte-ide/package-manager/internal/kendryte-sdk-standalone-1.0.0.tar.gz"
     },
 }
 JSON_EOF
