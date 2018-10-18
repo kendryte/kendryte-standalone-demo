@@ -22,7 +22,7 @@ for i in */ ; do
         cat > ".release/$i/kendryte-package.json" <<JSON_EOF
 {
 	// cmake config file
-	"$schema": "vscode://schemas/CMakeLists",
+	"\$schema": "vscode://schemas/CMakeLists",
 	"name": "${i}",
 	"version": "1.0.0",
 	"type": "example",
@@ -38,6 +38,9 @@ for i in */ ; do
 	"cpp_flags": [
 		"-std=gnu++17",
 	],
+    "dependency": {
+        "kendryte-sdk": "https://s3.cn-northwest-1.amazonaws.com.cn/kendryte-ide/package-manager/internal/sdk-standalone-1.0.0.zip"
+    },
 }
 JSON_EOF
     fi
@@ -54,6 +57,8 @@ echo ""
 echo ""
 for I in "${ITEMS[@]}" ; do
     cat <<LINE_EOF
-    {"name": "${I}", "versions": {"versionName": "1.0.0", "downloadUrl": "examples/${I}.tar.gz"}},
+    {"name": "${I}", "versions": [
+        {"versionName": "1.0.0", "downloadUrl": "examples/${I}.tar.gz"},
+    ]},
 LINE_EOF
 done
