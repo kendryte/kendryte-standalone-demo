@@ -30,7 +30,7 @@
 #endif
 
 #define CIPHER_MAX              3
-#define AES_TEST_DATA_LEN       (1024 + 4)
+#define AES_TEST_DATA_LEN       (1024 + 4UL)
 #define AES_TEST_PADDING_LEN    ((AES_TEST_DATA_LEN + 15) / 16 *16)
 
 enum _trans_data_mode
@@ -210,7 +210,7 @@ void aes_dma_get_data (uint8_t *input_key,
     {
         if(get_time_flag)
             cycle[AES_CBC][AES_HARD][AES_DMA] = read_cycle();
-        aes_cbc256_hard_encrypt_dma(DMAC_CHANNEL0, DMAC_CHANNEL1, &cbc_context, aes_data, data_size, aes_hard_out_data);
+        aes_cbc256_hard_encrypt_dma(DMAC_CHANNEL1, &cbc_context, aes_data, data_size, aes_hard_out_data);
         if(get_time_flag)
             cycle[AES_CBC][AES_HARD][AES_DMA] = read_cycle() - cycle[AES_CBC][AES_HARD][AES_DMA];
     }
@@ -218,7 +218,7 @@ void aes_dma_get_data (uint8_t *input_key,
     {
         if(get_time_flag)
             cycle[AES_ECB][AES_HARD][AES_DMA] = read_cycle();
-        aes_ecb256_hard_encrypt_dma(DMAC_CHANNEL0, DMAC_CHANNEL1, input_key, aes_data, data_size, aes_hard_out_data);
+        aes_ecb256_hard_encrypt_dma(DMAC_CHANNEL1, input_key, aes_data, data_size, aes_hard_out_data);
         if(get_time_flag)
             cycle[AES_ECB][AES_HARD][AES_DMA] = read_cycle() - cycle[AES_ECB][AES_HARD][AES_DMA];
     }
@@ -226,7 +226,7 @@ void aes_dma_get_data (uint8_t *input_key,
     {
         if(get_time_flag)
             cycle[AES_GCM][AES_HARD][AES_DMA] = read_cycle();
-        aes_gcm256_hard_encrypt_dma(DMAC_CHANNEL0, DMAC_CHANNEL1, &gcm_context, aes_data, data_size, aes_hard_out_data, gcm_hard_tag);
+        aes_gcm256_hard_encrypt_dma(DMAC_CHANNEL1, &gcm_context, aes_data, data_size, aes_hard_out_data, gcm_hard_tag);
         if(get_time_flag)
             cycle[AES_GCM][AES_HARD][AES_DMA] = read_cycle() - cycle[AES_GCM][AES_HARD][AES_DMA];
     }
@@ -307,11 +307,11 @@ check_result_t aes_check_decrypt(uint8_t *input_key,
     gcm_context.iv = iv;
 
     if (cipher_mod == AES_CBC)
-        aes_cbc256_hard_decrypt_dma(DMAC_CHANNEL0, DMAC_CHANNEL1, &cbc_context, aes_hard_out_data, padding_len, aes_soft_out_data);
+        aes_cbc256_hard_decrypt_dma(DMAC_CHANNEL1, &cbc_context, aes_hard_out_data, padding_len, aes_soft_out_data);
     else if (cipher_mod == AES_ECB)
-        aes_ecb256_hard_decrypt_dma(DMAC_CHANNEL0, DMAC_CHANNEL1, input_key, aes_hard_out_data, padding_len, aes_soft_out_data);
+        aes_ecb256_hard_decrypt_dma(DMAC_CHANNEL1, input_key, aes_hard_out_data, padding_len, aes_soft_out_data);
     else
-        aes_gcm256_hard_decrypt_dma(DMAC_CHANNEL0, DMAC_CHANNEL1, &gcm_context, aes_hard_out_data, padding_len, aes_soft_out_data, gcm_hard_tag);
+        aes_gcm256_hard_decrypt_dma(DMAC_CHANNEL1, &gcm_context, aes_hard_out_data, padding_len, aes_soft_out_data, gcm_hard_tag);
     check_tag = 0;
     for (i = 0; i < data_size; i++)
     {
@@ -369,7 +369,7 @@ check_result_t aes_check_all_byte(aes_cipher_mode_t cipher)
 
     if (cipher == AES_GCM)
         iv_len = iv_gcm_len;
-    for (index = 0; index < 256; index++)
+    for (index = 0; index < (AES_TEST_DATA_LEN < 256 ? AES_TEST_DATA_LEN : 256); index++)
     {
         aes_hard_in_data[index] = index;
         data_len++;
@@ -473,7 +473,7 @@ int main(void)
             printf("aes %s check_all_iv fail\n", cipher_name[cipher]);
             return -1;
         }
-        printf("[%s] [%d bytes] cpu time = %ld us, dma time = %ld us, soft time = %ld us\n", cipher_name[cipher],
+        printf("[%s] [%ld bytes] cpu time = %ld us, dma time = %ld us, soft time = %ld us\n", cipher_name[cipher],
                 AES_TEST_DATA_LEN,
                 cycle[cipher][AES_HARD][AES_CPU]/(sysctl_clock_get_freq(SYSCTL_CLOCK_CPU)/1000000),
                 cycle[cipher][AES_HARD][AES_DMA]/(sysctl_clock_get_freq(SYSCTL_CLOCK_CPU)/1000000),
