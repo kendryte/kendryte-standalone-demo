@@ -30,7 +30,7 @@
 #endif
 
 #define CIPHER_MAX              3
-#define AES_TEST_DATA_LEN       (1024 + 4UL)
+#define AES_TEST_DATA_LEN       (1024 + 1 + 4UL)
 #define AES_TEST_PADDING_LEN    ((AES_TEST_DATA_LEN + 15) / 16 *16)
 
 enum _trans_data_mode
@@ -295,7 +295,11 @@ check_result_t aes_check_decrypt(uint8_t *input_key,
 {
     uint32_t i;
     uint8_t check_tag = 0;
-    size_t padding_len = ((data_size + 15) / 16) * 16;
+    size_t padding_len = data_size;
+    if ((cipher_mod == AES_CBC) || (cipher_mod == AES_ECB))
+    {
+        padding_len = ((data_size + 15) / 16) * 16;
+    }
     cbc_context_t cbc_context;
     gcm_context_t gcm_context;
     cbc_context.input_key = input_key;
@@ -365,21 +369,21 @@ check_result_t aes_check_all_byte(aes_cipher_mode_t cipher)
     uint32_t check_tag = 0;
     uint32_t index = 0;
     size_t data_len = 0;
-
+    memset(aes_hard_in_data, 0, AES_TEST_PADDING_LEN);
     if (cipher == AES_GCM)
         iv_len = iv_gcm_len;
     for (index = 0; index < (AES_TEST_DATA_LEN < 256 ? AES_TEST_DATA_LEN : 256); index++)
     {
         aes_hard_in_data[index] = index;
         data_len++;
-        if(data_len % 4 == 0)
-        {
-            AES_DBG("[%s] test num: %ld \n", cipher_name[cipher], data_len);
-            if (aes_check(aes_key, key_len, aes_iv, iv_len, aes_aad, aad_len, cipher, aes_hard_in_data, data_len)
-                == AES_CHECK_FAIL)
+
+        AES_DBG("[%s] test num: %ld \n", cipher_name[cipher], data_len);
+        if (aes_check(aes_key, key_len, aes_iv, iv_len, aes_aad, aad_len, cipher, aes_hard_in_data, data_len)
+            == AES_CHECK_FAIL)
             check_tag = 1;
-        }
     }
+
+    memset(aes_hard_in_data, 0, AES_TEST_PADDING_LEN);
     get_time_flag = 1;
     data_len = AES_TEST_DATA_LEN;
     AES_DBG("[%s] test num: %ld \n", cipher_name[cipher], data_len);
@@ -402,6 +406,7 @@ check_result_t aes_check_all_key(aes_cipher_mode_t cipher)
     uint32_t i = 0;
     uint32_t check_tag = 0;
 
+    memset(aes_hard_in_data, 0, AES_TEST_PADDING_LEN);
     if (cipher == AES_GCM)
         iv_len = iv_gcm_len;
     data_len = AES_TEST_DATA_LEN;
@@ -428,6 +433,7 @@ check_result_t aes_check_all_iv(aes_cipher_mode_t cipher)
     uint32_t i = 0;
     uint8_t check_tag = 0;
 
+    memset(aes_hard_in_data, 0, AES_TEST_PADDING_LEN);
     if (cipher == AES_GCM)
         iv_len = iv_gcm_len;
     data_len = AES_TEST_DATA_LEN;
