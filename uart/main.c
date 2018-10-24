@@ -26,7 +26,6 @@
 
 int release_cmd(char *cmd)
 {
-    printf("%X %X %X %X \n",*cmd, *(cmd+1), *(cmd+2), *(cmd+3));
     switch(*((int *)cmd)){
         case CLOSLIGHT:
         gpiohs_set_pin(3, GPIO_PV_LOW);
@@ -48,55 +47,49 @@ void io_mux_init(void)
 
 int main()
 {
-    uint64_t core_id = current_coreid();
-    if(core_id == 0)
+    io_mux_init();
+    plic_init();
+    sysctl_enable_irq();
+
+    gpiohs_set_drive_mode(3, GPIO_DM_OUTPUT);
+    gpio_pin_value_t value = GPIO_PV_HIGH;
+    gpiohs_set_pin(3, value);
+
+    uart_init(0);
+    uart_config(0, 115200, 8, UART_STOP_1, UART_PARITY_NONE);
+
+    char *hel = {"hello world!\n"};
+    uart_send_data(0, hel, strlen(hel));
+
+    char recv = 0;
+    int rec_flag = 0;
+    char cmd[8];
+    int i = 0;
+    while (1)
     {
-        io_mux_init();
-        plic_init();
-        sysctl_enable_irq();
-
-        gpiohs_set_drive_mode(3, GPIO_DM_OUTPUT);
-        gpio_pin_value_t value = GPIO_PV_HIGH;
-        gpiohs_set_pin(3, value);
-
-        uart_init(0);
-        uart_config(0, 115200, 8, UART_STOP_1, UART_PARITY_NONE);
-
-        char *hel = {"hello world!\n"};
-        uart_send_data(0, hel, strlen(hel));
-
-        char recv = 0;
-        int rec_flag = 0;
-        char cmd[8];
-        int i = 0;
-        while (1)
+        while(uart_receive_data(0, &recv, 1))
         {
-            while(uart_receive_data(0, &recv, 1))
+            uart_send_data(0, &recv, 1);
+            switch(rec_flag)
             {
-                printf("%c ", recv);
-                fflush(stdout);
-                switch(rec_flag)
+                case 0:
+                recv == 0x55 ? (rec_flag = 1) : rec_flag;
+                break;
+                case 1:
+                recv == 0xAA ? (rec_flag = 2) : (rec_flag = 0);
+                break;
+                case 2:
+                cmd[i++] = recv;
+                if(i >= RECV_LENTH)
                 {
-                    case 0:
-                    recv == 0x55 ? (rec_flag = 1) : rec_flag;
-                    break;
-                    case 1:
-                    recv == 0xAA ? (rec_flag = 2) : (rec_flag = 0);
-                    break;
-                    case 2:
-                    cmd[i++] = recv;
-                    if(i >= RECV_LENTH)
-                    {
-                        i = 0;
-                        release_cmd(cmd);
-                        rec_flag = 0;
-                    }
-                    break;
+                    i = 0;
+                    release_cmd(cmd);
+                    rec_flag = 0;
                 }
+                break;
             }
         }
     }
     while(1);
 }
-
 

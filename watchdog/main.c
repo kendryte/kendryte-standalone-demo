@@ -17,7 +17,7 @@
 #include "wdt.h"
 #include "sysctl.h"
 
-int wdt0_irq(void)
+int wdt0_irq(void *ctx)
 {
     static int s_wdt_irq_cnt = 0;
     printf("%s\n", __func__);
@@ -31,22 +31,17 @@ int wdt0_irq(void)
 
 int main(void)
 {
-    uint64_t core_id = current_coreid();
-    if(core_id == 0)
+    printf("wdt start!\n");
+    int timeout = 0;
+    plic_init();
+    sysctl_enable_irq();
+    wdt_start(0, 2000, wdt0_irq);
+    while(1)
     {
-        printf("wdt start!\n");
-        int timeout = 0;
-        plic_init();
-        sysctl_enable_irq();
-        wdt_start(0, 2000, wdt0_irq);
-        while(1)
-        {
-            timeout ++;
-            if(timeout < 6)
-                wdt_feed(0);
-            sleep(1);
-        }
+        timeout ++;
+        if(timeout < 6)
+            wdt_feed(0);
+        sleep(1);
     }
-    while(1);
 }
 
