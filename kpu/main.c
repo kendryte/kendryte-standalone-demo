@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <stdlib.h>
 #include "dvp.h"
 #include "fpioa.h"
 #include "lcd.h"
@@ -18,8 +18,9 @@
 #define PLL1_OUTPUT_FREQ 300000000UL
 #define PLL2_OUTPUT_FREQ 45158400UL
 
+#define CLASS_NUMBER 20
+
 kpu_task_t task;
-uint64_t image_dst[(10*7*125+7)/8] __attribute__((aligned(128)));
 
 volatile uint8_t g_ai_done_flag;
 
@@ -84,7 +85,6 @@ static void io_set_power(void)
     sysctl_set_power_mode(SYSCTL_POWER_BANK2, SYSCTL_POWER_V18);
 }
 
-
 #if (CLASS_NUMBER > 1)
 typedef struct
 {
@@ -94,6 +94,7 @@ typedef struct
     uint16_t width;
     uint32_t *ptr;
 } class_lable_t;
+
 class_lable_t class_lable[CLASS_NUMBER] =
 {
     {"aeroplane", GREEN},
@@ -120,7 +121,6 @@ class_lable_t class_lable[CLASS_NUMBER] =
 
 static uint32_t lable_string_draw_ram[115 * 16 * 8 / 2];
 #endif
-
 
 static void lable_init(void)
 {
@@ -213,8 +213,12 @@ int main(void)
     dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
-    /* init ai kpu */
+    /* init kpu task*/
     kpu_task_init(&task);
+    /* init region layer */
+    region_layer_init(&task,320, 240, 0.5, 0.2);
+    /* get kpu output result buf */
+    uint8_t *kpu_outbuf = kpu_get_output_buf(&task);
     while (1)
     {
         /* dvp finish*/
@@ -222,13 +226,13 @@ int main(void)
             ;
 
         /* start to calculate */
-        kpu_run(&task, DMAC_CHANNEL5, g_ai_buf, image_dst, ai_done);
+        kpu_run(&task, DMAC_CHANNEL5, g_ai_buf, kpu_outbuf, ai_done);
 
         while(!g_ai_done_flag);
         g_ai_done_flag = 0;
 
         /* start region layer */
-        region_layer_cal((uint8_t *)image_dst);
+        region_layer_cal((uint8_t *)kpu_outbuf);
 
         /* display pic*/
         g_ram_mux ^= 0x01;

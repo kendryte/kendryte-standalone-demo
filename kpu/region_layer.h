@@ -2,10 +2,7 @@
 #define _REGION_LAYER
 
 #include <stdint.h>
-
-// #define CLASS_NUMBER 1
-#define CLASS_NUMBER 20
-// #define DEBUG_FLOAT
+#include "kpu.h"
 
 #ifdef DEBUG_FLOAT
 #define INPUT_TYPE float
@@ -16,5 +13,7 @@
 typedef void (*callback_draw_box)(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t class, float prob);
 void region_layer_cal(INPUT_TYPE *u8in);
 void region_layer_draw_boxes(callback_draw_box callback);
+void region_layer_init(kpu_task_t *task,uint32_t display_width, uint32_t display_hight, float layer_thresh, float layer_nms);
+void set_coords_n(uint32_t v_coords, uint32_t v_anchor);
 
 #endif // _REGION_LAYER
