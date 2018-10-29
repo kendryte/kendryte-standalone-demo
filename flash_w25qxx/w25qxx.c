@@ -90,6 +90,7 @@ w25qxx_status_t w25qxx_init(uint8_t spi_index, uint8_t spi_ss)
     spi_bus_no = spi_index;
     spi_chip_select = spi_ss;
     spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_STANDARD, DATALENGTH, 0);
+    spi_set_clk_rate(spi_bus_no, 25000000);
     w25qxx_page_program_fun = w25qxx_page_program;
     w25qxx_read_fun = w25qxx_stand_read_data;
     return W25QXX_OK;
@@ -100,6 +101,7 @@ w25qxx_status_t w25qxx_init_dma(uint8_t spi_index, uint8_t spi_ss)
     spi_bus_no = spi_index;
     spi_chip_select = spi_ss;
     spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_STANDARD, DATALENGTH, 0);
+    spi_set_clk_rate(spi_bus_no, 25000000);
     w25qxx_page_program_fun = w25qxx_page_program_dma;
     w25qxx_read_fun = w25qxx_stand_read_data;
     return W25QXX_OK;
