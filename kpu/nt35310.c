@@ -1,6 +1,7 @@
 #include "nt35310.h"
 #include "gpiohs.h"
 #include "spi.h"
+#include <stdio.h>
 
 static void  init_dcx(void)
 {
@@ -22,6 +23,8 @@ void tft_hard_init(void)
 {
     init_dcx();
     spi_init(SPI_CHANNEL, SPI_WORK_MODE_0, SPI_FF_OCTAL, 8, 0);
+    uint32_t clk = spi_set_clk_rate(SPI_CHANNEL, 25000000);
+    printf("clk is %d\n", clk);
 }
 
 void tft_write_command(uint8_t cmd)
