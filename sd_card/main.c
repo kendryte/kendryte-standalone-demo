@@ -11,9 +11,9 @@
 #include "uarths.h"
 #include "bsp.h"
 
-static void sdcard_test(void);
-static void fs_test(void);
-static void wav_test(TCHAR *path);
+static int sdcard_test(void);
+static int fs_test(void);
+static int wav_test(TCHAR *path);
 FRESULT sd_write_test(TCHAR *path);
 
 void io_mux_init(void)
@@ -50,17 +50,33 @@ int main(void)
     plic_init();
     sysctl_enable_irq();
 
-    sdcard_test();
-    fs_test();
-    sd_write_test(_T("0:test.txt"));
+    if(sdcard_test())
+    {
+        printf("SD card err\n");
+        return -1;
+    }
+    if(fs_test())
+    {
+        printf("FAT32 err\n");
+        return -1;
+    }
+    if(sd_write_test(_T("0:test.txt")))
+    {
+        printf("SD write err\n");
+        return -1;
+    }
     while (1) {
-        wav_test(_T("0:music1.wav"));
+        if(wav_test(_T("0:music1.wav")))
+        {
+            printf("Play music err\n");
+            return -1;
+        }
     }
 
     return 0;
 }
 
-static void sdcard_test(void)
+static int sdcard_test(void)
 {
     uint8_t status;
 
@@ -69,15 +85,16 @@ static void sdcard_test(void)
     printf("sd init %d\n", status);
     if (status != 0)
     {
-        return;
+        return status;
     }
 
     printf("card info status %d\n", status);
     printf("CardCapacity:%ld\n", cardinfo.CardCapacity);
     printf("CardBlockSize:%d\n", cardinfo.CardBlockSize);
+    return 0;
 }
 
-static void fs_test(void)
+static int fs_test(void)
 {
     static FATFS sdcard_fs;
     FRESULT status;
@@ -88,7 +105,7 @@ static void fs_test(void)
     status = f_mount(&sdcard_fs, _T("0:"), 1);
     printf("mount sdcard:%d\n", status);
     if (status != FR_OK)
-        return;
+        return status;
 
     printf("printf filename\n");
     status = f_findfirst(&dj, &fno, _T("0:"), _T("*"));
@@ -100,6 +117,7 @@ static void fs_test(void)
         status = f_findnext(&dj, &fno);
     }
     f_closedir(&dj);
+    return 0;
 }
 
 struct wav_file_t wav_file;
@@ -189,7 +207,7 @@ FRESULT sd_write_test(TCHAR *path)
     return ret;
 }
 
-static void wav_test(TCHAR *path)
+static int wav_test(TCHAR *path)
 {
     enum errorcode_e status;
     FIL file;
@@ -197,7 +215,7 @@ static void wav_test(TCHAR *path)
     printf("/*******************wav test*******************/\n");
     if (FR_OK != f_open(&file, path, FA_READ)) {
         printf("open file fail\n");
-        return;
+        return -1;
     }
 
     wav_file.fp = &file;
@@ -227,7 +245,7 @@ static void wav_test(TCHAR *path)
     if (OK != status) {
         f_close(&file);
         printf("decode init fail\n");
-        return;
+        return -1;
     }
 
     i2s_play(I2S_DEVICE_0,
@@ -247,4 +265,5 @@ static void wav_test(TCHAR *path)
     }
     f_close(&file);
     wav_decode_finish(&wav_file);
+    return 0;
 }
