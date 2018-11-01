@@ -165,6 +165,16 @@ FRESULT sd_write_test(TCHAR *path)
     printf("/*******************sd write test*******************/\n");
     uint32_t v_ret_len = 0;
 
+    FILINFO v_fileinfo;
+    if((ret = f_stat(path, &v_fileinfo)) == FR_OK)
+    {
+        printf("%s length is %lld\n", path, v_fileinfo.fsize);
+    }
+    else
+    {
+        printf("%s fstat err [%d]\n", path, ret);
+    }
+
     if((ret = f_open(&file, path, FA_READ)) == FR_OK)
     {
         char v_buf[64] = {0};
