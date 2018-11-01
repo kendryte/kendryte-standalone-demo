@@ -7,8 +7,6 @@
 #include <stdio.h>
 #include "gpiohs.h"
 
-uint8_t g_high_speed_flag = 0;
-
 /*
  * @brief  Start Data tokens:
  *         Tokens (necessary because at nop/idle (and CS active) only 0xff is
@@ -39,8 +37,6 @@ uint8_t g_high_speed_flag = 0;
 #define SD_CMD59         59  /*!< CMD59 = 0x59 */
 
 SD_CardInfo cardinfo;
-static volatile spi_t *spi_handle;
-static uint8_t dma_tx_line, dma_rx_line;
 
 void SD_CS_HIGH(void)
 {
@@ -54,42 +50,18 @@ void SD_CS_LOW(void)
 
 void SD_HIGH_SPEED_ENABLE(void)
 {
-    g_high_speed_flag = 1;
-    spi_handle->baudr = 8;
+    spi_set_clk_rate(SPI_DEVICE_0, 10000000);
 }
 
 static void sd_lowlevel_init(uint8_t spi_index)
 {
-
     gpiohs_set_drive_mode(7, GPIO_DM_OUTPUT);
-
-	if (spi_index == 0) {
-		sysctl_reset(SYSCTL_RESET_SPI0);
-		sysctl_clock_enable(SYSCTL_CLOCK_SPI0);
-		sysctl_clock_set_threshold(SYSCTL_THRESHOLD_SPI0, 1);
-
-		spi_handle = spi[0];
-		dma_rx_line = 0;
-		dma_tx_line = 1;
-	}
-
-	spi_handle->ser = 0x00;
-	spi_handle->ssienr = 0x00;
-	spi_handle->baudr = 400;
-	spi_handle->imr = 0x00;
-	spi_handle->dmatdlr = 0x10;
-	spi_handle->dmardlr = 0x0F;
-
-    spi_set_clk_rate(SPI_DEVICE_0, 200000);     //set clk rate
+    spi_set_clk_rate(SPI_DEVICE_0, 200000);     /*set clk rate*/
 }
 
 static void sd_write_data(uint8_t *data_buff, uint32_t length)
 {
     spi_init(SPI_DEVICE_0, SPI_WORK_MODE_0, SPI_FF_STANDARD, 8, 0);
-    if(g_high_speed_flag)
-        spi_set_clk_rate(SPI_DEVICE_0, 10000000);
-    else
-        spi_set_clk_rate(SPI_DEVICE_0, 200000);
     spi_send_data_standard(SPI_DEVICE_0, SPI_CHIP_SELECT_3, NULL, 0, data_buff, length);
 }
 
@@ -97,10 +69,6 @@ static void sd_read_data(uint8_t *data_buff, uint32_t length)
 {
 
     spi_init(SPI_DEVICE_0, SPI_WORK_MODE_0, SPI_FF_STANDARD, 8, 0);
-    if(g_high_speed_flag)
-        spi_set_clk_rate(SPI_DEVICE_0, 10000000);
-    else
-        spi_set_clk_rate(SPI_DEVICE_0, 200000);
     spi_receive_data_standard(SPI_DEVICE_0, SPI_CHIP_SELECT_3, NULL, 0, data_buff, length);
 
 }
@@ -108,20 +76,12 @@ static void sd_read_data(uint8_t *data_buff, uint32_t length)
 static void sd_write_data_dma(uint8_t *data_buff)
 {
     spi_init(SPI_DEVICE_0, SPI_WORK_MODE_0, SPI_FF_STANDARD, 32, 1);
-    if(g_high_speed_flag)
-        spi_set_clk_rate(SPI_DEVICE_0, 10000000);
-    else
-        spi_set_clk_rate(SPI_DEVICE_0, 200000);
     spi_send_data_standard_dma(DMAC_CHANNEL0, SPI_DEVICE_0, SPI_CHIP_SELECT_3, NULL, 0, (uint8_t *)(data_buff), 128 * 4);
 }
 
 static void sd_read_data_dma(uint8_t *data_buff)
 {
     spi_init(SPI_DEVICE_0, SPI_WORK_MODE_0, SPI_FF_STANDARD, 32, 1);
-    if(g_high_speed_flag)
-        spi_set_clk_rate(SPI_DEVICE_0, 10000000);
-    else
-        spi_set_clk_rate(SPI_DEVICE_0, 200000);
     spi_receive_data_standard_dma(-1, DMAC_CHANNEL0, SPI_DEVICE_0, SPI_CHIP_SELECT_3,NULL, 0, data_buff,128 * 4);
 }
 
