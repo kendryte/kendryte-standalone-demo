@@ -24,6 +24,8 @@
 #define CLOSLIGHT   0x55555555
 #define OPENLIGHT   0xAAAAAAAA
 
+#define UART_NUM    UART_DEVICE_3
+
 int release_cmd(char *cmd)
 {
     switch(*((int *)cmd)){
@@ -40,8 +42,8 @@ int release_cmd(char *cmd)
 void io_mux_init(void)
 {
 
-    fpioa_set_function(4, FUNC_UART1_RX);
-    fpioa_set_function(5, FUNC_UART1_TX);
+    fpioa_set_function(4, FUNC_UART1_RX + UART_NUM * 2);
+    fpioa_set_function(5, FUNC_UART1_TX + UART_NUM * 2);
     fpioa_set_function(24, FUNC_GPIOHS3);
 }
 
@@ -55,11 +57,11 @@ int main()
     gpio_pin_value_t value = GPIO_PV_HIGH;
     gpiohs_set_pin(3, value);
 
-    uart_init(0);
-    uart_config(0, 115200, 8, UART_STOP_1, UART_PARITY_NONE);
+    uart_init(UART_NUM);
+    uart_config(UART_NUM, 115200, 8, UART_STOP_1, UART_PARITY_NONE);
 
     char *hel = {"hello world!\n"};
-    uart_send_data(0, hel, strlen(hel));
+    uart_send_data(UART_NUM, hel, strlen(hel));
 
     char recv = 0;
     int rec_flag = 0;
@@ -67,9 +69,9 @@ int main()
     int i = 0;
     while (1)
     {
-        while(uart_receive_data(0, &recv, 1))
+        while(uart_receive_data(UART_NUM, &recv, 1))
         {
-            uart_send_data(0, &recv, 1);
+            uart_send_data(UART_NUM, &recv, 1);
             switch(rec_flag)
             {
                 case 0:
