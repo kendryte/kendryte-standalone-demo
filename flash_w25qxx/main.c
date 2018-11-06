@@ -17,8 +17,8 @@
 #include "sysctl.h"
 #include "w25qxx.h"
 
-#define TEST_NUMBER (256)
-#define DATA_ADDRESS 0x400000
+#define TEST_NUMBER (256 + 128)
+#define DATA_ADDRESS 0x600000
 uint8_t data_buf[TEST_NUMBER];
 
 void io_mux_init(uint8_t index)
@@ -33,7 +33,7 @@ void io_mux_init(uint8_t index)
         fpioa_set_function(15, FUNC_SPI0_D2);
         fpioa_set_function(17, FUNC_SPI0_D3);
     }
-    else
+    else if(index == 2)
     {
         fpioa_set_function(30, FUNC_SPI1_SS0);
         fpioa_set_function(32, FUNC_SPI1_SCLK);
@@ -52,11 +52,11 @@ int main(void)
     printf("spi%d master test\n", spi_index);
     io_mux_init(spi_index);
 
-    w25qxx_init_dma(spi_index, 0);
+    w25qxx_init(spi_index, 0);
 
-    w25qxx_enable_quad_mode_dma();
+    w25qxx_enable_quad_mode();
 
-    w25qxx_read_id_dma(&manuf_id, &device_id);
+    w25qxx_read_id(&manuf_id, &device_id);
     printf("manuf_id:0x%02x, device_id:0x%02x\n", manuf_id, device_id);
     if ((manuf_id != 0xEF && manuf_id != 0xC8) || (device_id != 0x17 && device_id != 0x16))
     {
@@ -69,14 +69,14 @@ int main(void)
         data_buf[index] = (uint8_t)(index);
 
     /*write data*/
-    w25qxx_write_data_dma(DATA_ADDRESS, data_buf, TEST_NUMBER);
+    w25qxx_write_data(DATA_ADDRESS, data_buf, TEST_NUMBER);
 
     uint8_t v_recv_buf[TEST_NUMBER];
 
     for(index = 0; index < TEST_NUMBER; index++)
         v_recv_buf[index] = 0;
 
-    w25qxx_read_data_dma(DATA_ADDRESS, v_recv_buf, TEST_NUMBER, W25QXX_QUAD_FAST);
+    w25qxx_read_data(DATA_ADDRESS, v_recv_buf, TEST_NUMBER, W25QXX_QUAD_FAST);
     for (index = 0; index < TEST_NUMBER; index++)
     {
         if (v_recv_buf[index] != (uint8_t)(index))
@@ -86,16 +86,16 @@ int main(void)
         }
     }
 
-    w25qxx_sector_erase_dma(DATA_ADDRESS);
-    while (w25qxx_is_busy_dma() == W25QXX_BUSY)
+    w25qxx_sector_erase(DATA_ADDRESS);
+    while (w25qxx_is_busy() == W25QXX_BUSY)
         ;
 
-    w25qxx_write_data_direct_dma(DATA_ADDRESS, data_buf, TEST_NUMBER);
+    w25qxx_write_data_direct(DATA_ADDRESS, data_buf, TEST_NUMBER);
 
     for(index = 0; index < TEST_NUMBER; index++)
         v_recv_buf[index] = 0;
 
-    w25qxx_read_data_dma(DATA_ADDRESS, v_recv_buf, TEST_NUMBER, W25QXX_QUAD_FAST);
+    w25qxx_read_data(DATA_ADDRESS, v_recv_buf, TEST_NUMBER, W25QXX_QUAD_FAST);
     for (index = 0; index < TEST_NUMBER; index++)
     {
         if (v_recv_buf[index] != (uint8_t)(index))

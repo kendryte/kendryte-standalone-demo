@@ -17,6 +17,7 @@
 #include "spi.h"
 #include "sysctl.h"
 #include "dmac.h"
+#include <stdio.h>
 
 uint32_t spi_bus_no = 0;
 uint32_t spi_chip_select = 0;
@@ -36,13 +37,6 @@ static w25qxx_status_t w25qxx_receive_data(uint8_t *cmd_buff, uint8_t cmd_len, u
     return W25QXX_OK;
 }
 
-static w25qxx_status_t w25qxx_receive_data_dma(uint8_t *cmd_buff, uint8_t cmd_len, uint8_t *rx_buff, uint32_t rx_len)
-{
-    spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_STANDARD, DATALENGTH, 0);
-    spi_receive_data_standard_dma(DMAC_CHANNEL0, DMAC_CHANNEL1, spi_bus_no, spi_chip_select, cmd_buff, cmd_len, rx_buff, rx_len);
-    return W25QXX_OK;
-}
-
 static w25qxx_status_t w25qxx_send_data(uint8_t *cmd_buff, uint8_t cmd_len, uint8_t *tx_buff, uint32_t tx_len)
 {
     spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_STANDARD, DATALENGTH, 0);
@@ -50,22 +44,15 @@ static w25qxx_status_t w25qxx_send_data(uint8_t *cmd_buff, uint8_t cmd_len, uint
     return W25QXX_OK;
 }
 
-static w25qxx_status_t w25qxx_send_data_dma(uint8_t *cmd_buff, uint8_t cmd_len, uint8_t *tx_buff, uint32_t tx_len)
+static w25qxx_status_t w25qxx_receive_data_enhanced(uint32_t *cmd_buff, uint8_t cmd_len, uint8_t *rx_buff, uint32_t rx_len)
 {
-    spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_STANDARD, DATALENGTH, 0);
-    spi_send_data_standard_dma(DMAC_CHANNEL0, spi_bus_no, spi_chip_select, cmd_buff, cmd_len, tx_buff, tx_len);
+    spi_receive_data_multiple(spi_bus_no, spi_chip_select, cmd_buff, cmd_len, rx_buff, rx_len);
     return W25QXX_OK;
 }
 
-static w25qxx_status_t w25qxx_receive_data_enhanced_dma(uint32_t *cmd_buff, uint8_t cmd_len, uint8_t *rx_buff, uint32_t rx_len)
+static w25qxx_status_t w25qxx_send_data_enhanced(uint32_t *cmd_buff, uint8_t cmd_len, uint8_t *tx_buff, uint32_t tx_len)
 {
-    spi_receive_data_multiple_dma(DMAC_CHANNEL0, DMAC_CHANNEL1, spi_bus_no, spi_chip_select, cmd_buff, cmd_len, rx_buff, rx_len);
-    return W25QXX_OK;
-}
-
-static w25qxx_status_t w25qxx_send_data_enhanced_dma(uint32_t *cmd_buff, uint8_t cmd_len, uint8_t *tx_buff, uint32_t tx_len)
-{
-    spi_send_data_multiple_dma(DMAC_CHANNEL0, spi_bus_no, spi_chip_select, cmd_buff, cmd_len, tx_buff, tx_len);
+    spi_send_data_multiple(spi_bus_no, spi_chip_select, cmd_buff, cmd_len, tx_buff, tx_len);
     return W25QXX_OK;
 }
 
@@ -74,7 +61,8 @@ w25qxx_status_t w25qxx_init(uint8_t spi_index, uint8_t spi_ss)
     spi_bus_no = spi_index;
     spi_chip_select = spi_ss;
     spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_STANDARD, DATALENGTH, 0);
-    spi_set_clk_rate(spi_bus_no, 25000000);
+    uint32_t ret = spi_set_clk_rate(spi_bus_no, 10000000);
+    printf("spi clk is %d\n", ret);
     w25qxx_page_program_fun = w25qxx_page_program;
     w25qxx_read_fun = w25qxx_stand_read_data;
     return W25QXX_OK;
@@ -221,7 +209,7 @@ static w25qxx_status_t w25qxx_page_program(uint32_t addr, uint8_t *data_buf, uin
     cmd[2] = (uint8_t)(addr >> 8);
     cmd[3] = (uint8_t)(addr);
     w25qxx_write_enable();
-    w25qxx_send_data_dma(cmd, 4, data_buf, length);
+    w25qxx_send_data(cmd, 4, data_buf, length);
     while (w25qxx_is_busy() == W25QXX_BUSY)
         ;
     return W25QXX_OK;
@@ -237,7 +225,7 @@ static w25qxx_status_t w25qxx_quad_page_program(uint32_t addr, uint8_t *data_buf
     spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_QUAD, DATALENGTH, 0);
     spi_init_non_standard(spi_bus_no, 8/*instrction length*/, 24/*address length*/, 0/*wait cycles*/,
                           SPI_AITM_STANDARD/*spi address trans mode*/);
-    w25qxx_send_data_enhanced_dma(cmd, 2, data_buf, length);
+    w25qxx_send_data_enhanced(cmd, 2, data_buf, length);
     while (w25qxx_is_busy() == W25QXX_BUSY)
         ;
     return W25QXX_OK;
@@ -328,13 +316,14 @@ static w25qxx_status_t _w25qxx_read_data(uint32_t addr, uint8_t *data_buf, uint3
 {
     uint32_t cmd[2] = {0};
 
-    switch (mode) {
+    switch (mode)
+    {
         case W25QXX_STANDARD:
             *(((uint8_t *)cmd) + 0) = READ_DATA;
             *(((uint8_t *)cmd) + 1) = (uint8_t)(addr >> 16);
             *(((uint8_t *)cmd) + 2) = (uint8_t)(addr >> 8);
             *(((uint8_t *)cmd) + 3) = (uint8_t)(addr >> 0);
-            w25qxx_receive_data_dma((uint8_t *)cmd, 4, data_buf, length);
+            w25qxx_receive_data((uint8_t *)cmd, 4, data_buf, length);
             break;
         case W25QXX_STANDARD_FAST:
             *(((uint8_t *)cmd) + 0) = FAST_READ;
@@ -342,7 +331,7 @@ static w25qxx_status_t _w25qxx_read_data(uint32_t addr, uint8_t *data_buf, uint3
             *(((uint8_t *)cmd) + 2) = (uint8_t)(addr >> 8);
             *(((uint8_t *)cmd) + 3) = (uint8_t)(addr >> 0);
             *(((uint8_t *)cmd) + 4) = 0xFF;
-            w25qxx_receive_data_dma((uint8_t *)cmd, 5, data_buf, length);
+            w25qxx_receive_data((uint8_t *)cmd, 5, data_buf, length);
             break;
         case W25QXX_DUAL:
             cmd[0] = FAST_READ_DUAL_OUTPUT;
@@ -350,7 +339,7 @@ static w25qxx_status_t _w25qxx_read_data(uint32_t addr, uint8_t *data_buf, uint3
             spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_DUAL, DATALENGTH, 0);
             spi_init_non_standard(spi_bus_no, 8/*instrction length*/, 24/*address length*/, 8/*wait cycles*/,
                                   SPI_AITM_STANDARD/*spi address trans mode*/);
-            w25qxx_receive_data_enhanced_dma(cmd, 2, data_buf, length);
+            w25qxx_receive_data_enhanced(cmd, 2, data_buf, length);
             break;
         case W25QXX_DUAL_FAST:
             cmd[0] = FAST_READ_DUAL_IO;
@@ -358,7 +347,7 @@ static w25qxx_status_t _w25qxx_read_data(uint32_t addr, uint8_t *data_buf, uint3
             spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_DUAL, DATALENGTH, 0);
             spi_init_non_standard(spi_bus_no, 8/*instrction length*/, 32/*address length*/, 0/*wait cycles*/,
                                   SPI_AITM_ADDR_STANDARD/*spi address trans mode*/);
-            w25qxx_receive_data_enhanced_dma(cmd, 2, data_buf, length);
+            w25qxx_receive_data_enhanced(cmd, 2, data_buf, length);
             break;
         case W25QXX_QUAD:
             cmd[0] = FAST_READ_QUAL_OUTPUT;
@@ -366,7 +355,7 @@ static w25qxx_status_t _w25qxx_read_data(uint32_t addr, uint8_t *data_buf, uint3
             spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_QUAD, DATALENGTH, 0);
             spi_init_non_standard(spi_bus_no, 8/*instrction length*/, 24/*address length*/, 8/*wait cycles*/,
                                   SPI_AITM_STANDARD/*spi address trans mode*/);
-            w25qxx_receive_data_enhanced_dma(cmd, 2, data_buf, length);
+            w25qxx_receive_data_enhanced(cmd, 2, data_buf, length);
             break;
         case W25QXX_QUAD_FAST:
             cmd[0] = FAST_READ_QUAL_IO;
@@ -374,7 +363,7 @@ static w25qxx_status_t _w25qxx_read_data(uint32_t addr, uint8_t *data_buf, uint3
             spi_init(spi_bus_no, SPI_WORK_MODE_0, SPI_FF_QUAD, DATALENGTH, 0);
             spi_init_non_standard(spi_bus_no, 8/*instrction length*/, 32/*address length*/, 4/*wait cycles*/,
                                   SPI_AITM_ADDR_STANDARD/*spi address trans mode*/);
-            w25qxx_receive_data_enhanced_dma(cmd, 2, data_buf, length);
+            w25qxx_receive_data_enhanced(cmd, 2, data_buf, length);
             break;
     }
     return W25QXX_OK;
