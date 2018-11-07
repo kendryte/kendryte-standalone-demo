@@ -45,27 +45,6 @@ int release_cmd(char *cmd)
     return 0;
 }
 
-int uart_send_done(void *ctx)
-{
-    printf("Send complete\n");
-    return 0;
-}
-
-int uart_recv_done(void *ctx)
-{
-    if((uint64_t)ctx - (uint64_t)recv_buf >= 120)
-    {
-        for(uint32_t i=0; i < 120; i++)
-            printf("%02X ", recv_buf[i]);
-        printf("\n");
-    }
-    uint64_t v_start = sysctl_get_time_us();
-    uart_receive_data_dma_irq(UART_NUM, DMAC_CHANNEL1, ctx+20, 20, uart_recv_done, ctx+20, 2);
-    uint64_t v_stop = sysctl_get_time_us();
-    printf("%ld us\n", v_stop - v_start);
-    return 0;
-}
-
 void io_mux_init(void)
 {
     fpioa_set_function(4, FUNC_UART1_RX + UART_NUM * 2);
@@ -95,7 +74,7 @@ int main()
     int i = 0;
     while (1)
     {
-        uart_receive_data_dma(UART_NUM, DMAC_CHANNEL0, (uint8_t *)&recv, 1);    /*block wait for receive*/
+        uart_receive_data_dma(UART_NUM, DMAC_CHANNEL1, (uint8_t *)&recv, 1);    /*block wait for receive*/
         switch(rec_flag)
         {
             case 0:
