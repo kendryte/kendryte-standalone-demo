@@ -18,8 +18,6 @@
 #include "plic.h"
 
 /* QVGA Window Size */
-#if 0
-
 static const uint8_t ov2640_config[][2] =
 {
     {0xff, 0x00},
