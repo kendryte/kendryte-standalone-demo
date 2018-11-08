@@ -18,10 +18,13 @@
 #include "fpioa.h"
 #include "lcd.h"
 #include "ov5640.h"
+#include "ov2640.h"
 #include "plic.h"
 #include "sysctl.h"
 #include "uarths.h"
 #include "nt35310.h"
+
+#define  OV5640  0
 
 uint32_t g_lcd_gram0[38400] __attribute__((aligned(64)));
 uint32_t g_lcd_gram1[38400] __attribute__((aligned(64)));
@@ -78,7 +81,7 @@ static void io_set_power(void)
 int main(void)
 {
     /* Set CPU and dvp clk */
-    sysctl_cpu_set_freq(160000000UL);
+    sysctl_pll_set_freq(SYSCTL_PLL0, 400000000UL);
     sysctl_pll_set_freq(SYSCTL_PLL1, 160000000UL);
     uarths_init();
 
@@ -94,7 +97,7 @@ int main(void)
 
     /* DVP init */
     printf("DVP init\n");
-
+    #if OV5640
     dvp_init(16);
     dvp_enable_burst();
     dvp_set_output_enable(0, 1);
@@ -102,7 +105,15 @@ int main(void)
     dvp_set_image_format(DVP_CFG_RGB_FORMAT);
     dvp_set_image_size(320, 240);
     ov5640_init();
-
+    #else
+    dvp_init(8);
+    dvp_enable_burst();
+    dvp_set_output_enable(0, 1);
+    dvp_set_output_enable(1, 1);
+    dvp_set_image_format(DVP_CFG_RGB_FORMAT);
+    dvp_set_image_size(320, 240);
+    ov2640_init();
+    #endif
     dvp_set_ai_addr((uint32_t)0x40600000, (uint32_t)0x40612C00, (uint32_t)0x40625800);
     dvp_set_display_addr((uint32_t)g_lcd_gram0);
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 0);
