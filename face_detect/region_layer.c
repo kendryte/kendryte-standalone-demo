@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include <kpu.h>
+#include "kpu.h"
 #include "region_layer.h"
 
 typedef struct box_t {
@@ -37,6 +37,7 @@ static box *boxes = NULL;
 static float *probs_buf = NULL;
 static float **probs = NULL;
 
+
 static const float l_biases[] = {0.57273, 0.677385, 1.87446, 2.06253, 3.33843, 5.47434, 7.88282, 3.52778, 9.77052, 9.16828};
 #ifndef DEBUG_FLOAT
 #include "region_layer_array.include"
@@ -48,7 +49,7 @@ void set_coords_n(uint32_t v_coords, uint32_t v_anchor)
     region_layer_l_n = v_anchor;
 }
 
-void region_layer_init(kpu_task_t *task,uint32_t display_width, uint32_t display_hight, float layer_thresh, float layer_nms)
+int region_layer_init(kpu_task_t *task,uint32_t display_width, uint32_t display_hight, float layer_thresh, float layer_nms)
 {
     kpu_layer_argument_t* last_layer = &task->layers[task->layers_length-1];
     kpu_layer_argument_t* first_layer = &task->layers[0];
@@ -67,6 +68,9 @@ void region_layer_init(kpu_task_t *task,uint32_t display_width, uint32_t display
     region_layer_l_w = last_layer->image_size.data.o_row_wid + 1;
     region_layer_l_h = last_layer->image_size.data.o_col_high + 1;
 
+    size_t output_size = ((last_layer->dma_parameter.data.dma_total_byte + 1) + 7) / 8 * 8;
+    printf("output_size is %ld\n", output_size);
+
     printf("region_layer_l_classes is %d\n", region_layer_l_classes);
     printf("region_layer_net_w is %d\n", region_layer_net_w);
     printf("region_layer_net_h is %d\n", region_layer_net_h);
@@ -75,14 +79,37 @@ void region_layer_init(kpu_task_t *task,uint32_t display_width, uint32_t display
 
     region_layer_boxes = (region_layer_l_h * region_layer_l_w * region_layer_l_n); // l.w * l.h * l.n
     region_layer_outputs = (region_layer_boxes * (region_layer_l_classes + region_layer_l_coords + 1)); // l.h * l.w * l.n * (l.classes + l.coords + 1)
-
+    printf("regin_layer_outputs is %d\n", region_layer_outputs);
+    if(region_layer_outputs > output_size)
+    {
+        printf("Memory overun\n");
+        return -1;
+    }
     output = malloc(region_layer_outputs * sizeof(float));
-
+    if(output == NULL)
+        return -1;
     boxes = malloc(region_layer_boxes * sizeof(box));
-
+    if(output == NULL)
+    {
+        free(output);
+        return -1;
+    }
     probs_buf = malloc(region_layer_boxes * (region_layer_l_classes + 1) * sizeof(float));
-
+    if(probs_buf == NULL)
+    {
+        free(output);
+        free(boxes);
+        return -1;
+    }
     probs = malloc(region_layer_boxes * sizeof(float *));
+    if(probs == NULL)
+    {
+        free(output);
+        free(boxes);
+        free(probs_buf);
+        return -1;
+    }
+    return 0;
 }
 
 void region_layer_deinit(kpu_task_t *task)
@@ -162,7 +189,7 @@ static  void forward_region_layer(const INPUT_TYPE *u8in, float *output)
 {
     volatile int n, index;
 
-    for (index = 0; index < 8750; index++)
+    for (index = 0; index < region_layer_outputs; index++)
         output[index] = u8in[index] * scale + bais;
 
     for (n = 0; n < region_layer_l_n; ++n) {

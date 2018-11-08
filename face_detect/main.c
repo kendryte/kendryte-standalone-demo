@@ -25,7 +25,7 @@
 kpu_task_t task;
 uint64_t image_dst[(10*7*125+7)/8] __attribute__((aligned(128)));
 
-volatile uint8_t g_ai_done_flag;
+volatile uint32_t g_ai_done_flag;
 
 static int ai_done(void *ctx)
 {
@@ -146,7 +146,6 @@ static void lable_init(void)
 
 static void drawboxes(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t class, float prob)
 {
-    printf("draw box %d %d %d %d\n", x1, y1, x2, y2);
     if (x1 >= 320)
         x1 = 319;
     if (x2 >= 320)
@@ -221,7 +220,7 @@ int main(void)
         /* init ai cnn */
     kpu_task_init(&task);
     printf("KPU TASK INIT, FREE MEM: %ld\n", get_free_heap_size());
-    region_layer_init(&task, 320, 240, 0.6, 0.2);
+    region_layer_init(&task, 320, 240, 0.1, 0.2);
     printf("REGION LAYER INIT, FREE MEM: %ld\n", get_free_heap_size());
     while (1)
     {
@@ -230,28 +229,21 @@ int main(void)
             ;
 
         /* start to calculate */
-        kpu_task_init(&task);
         kpu_run(&task, 5, g_ai_buf, image_dst, ai_done);
-
         while(!g_ai_done_flag);
         g_ai_done_flag = 0;
 
         /* start region layer */
         region_layer_cal((uint8_t *)image_dst);
 
-        printf("Region layer cal, free mem: %ld\n", get_free_heap_size());
-
         /* display pic*/
         g_ram_mux ^= 0x01;
 
         lcd_draw_picture(0, 0, 320, 240, g_ram_mux ? g_lcd_gram0 : g_lcd_gram1);
-        printf("Draw pic\n");
         g_dvp_finish_flag = 0;
 
         /* draw boxs */
         region_layer_draw_boxes(drawboxes);
-        printf("Draw box\n");
-        sleep(1);
     }
 
     return 0;
