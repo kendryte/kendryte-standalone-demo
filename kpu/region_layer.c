@@ -30,25 +30,18 @@ uint32_t region_layer_outputs;
 // parse_region
 uint32_t region_layer_l_classes;
 uint32_t region_layer_l_coords = 4;
-uint32_t region_layer_l_n = 5;
+uint32_t region_layer_l_n;
 
 static float *output = NULL;
 static box *boxes = NULL;
 static float *probs_buf = NULL;
 static float **probs = NULL;
-
-static const float l_biases[] = {1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52};
+static float *l_biases;
 #ifndef DEBUG_FLOAT
 #include "region_layer_array.include"
 #endif
 
-void set_coords_n(uint32_t v_coords, uint32_t v_anchor)
-{
-    region_layer_l_coords = v_coords;
-    region_layer_l_n = v_anchor;
-}
-
-int region_layer_init(kpu_task_t *task,uint32_t display_width, uint32_t display_hight, float layer_thresh, float layer_nms)
+int region_layer_init(kpu_task_t *task,uint32_t display_width, uint32_t display_hight, float layer_thresh, float layer_nms, uint32_t anchor_num, float *anchor_ptr)
 {
     kpu_layer_argument_t* last_layer = &task->layers[task->layers_length-1];
     kpu_layer_argument_t* first_layer = &task->layers[0];
@@ -58,6 +51,9 @@ int region_layer_init(kpu_task_t *task,uint32_t display_width, uint32_t display_
 
     region_layer_img_w = display_width;
     region_layer_img_h = display_hight;
+
+    l_biases = anchor_ptr;
+    region_layer_l_n = anchor_num;
 
     region_layer_l_classes = (last_layer->image_channel_num.data.o_ch_num + 1) / 5 - 5;
 
