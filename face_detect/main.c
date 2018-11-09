@@ -222,6 +222,8 @@ int main(void)
     printf("KPU TASK INIT, FREE MEM: %ld\n", get_free_heap_size());
     region_layer_init(&task, 320, 240, 0.1, 0.2);
     printf("REGION LAYER INIT, FREE MEM: %ld\n", get_free_heap_size());
+    /* get kpu output result buf */
+    uint8_t *kpu_outbuf = kpu_get_output_buf(&task);
     while (1)
     {
         /* ai cal finish*/
@@ -229,12 +231,12 @@ int main(void)
             ;
 
         /* start to calculate */
-        kpu_run(&task, 5, g_ai_buf, image_dst, ai_done);
+        kpu_run(&task, 5, g_ai_buf, kpu_outbuf, ai_done);
         while(!g_ai_done_flag);
         g_ai_done_flag = 0;
 
         /* start region layer */
-        region_layer_cal((uint8_t *)image_dst);
+        region_layer_cal((uint8_t *)kpu_outbuf);
 
         /* display pic*/
         g_ram_mux ^= 0x01;
