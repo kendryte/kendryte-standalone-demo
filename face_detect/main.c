@@ -23,7 +23,6 @@
 #define PLL2_OUTPUT_FREQ 45158400UL
 
 kpu_task_t task;
-uint64_t image_dst[(10*7*125+7)/8] __attribute__((aligned(128)));
 
 volatile uint32_t g_ai_done_flag;
 
@@ -37,6 +36,10 @@ uint32_t g_lcd_gram0[38400] __attribute__((aligned(64)));
 uint32_t g_lcd_gram1[38400] __attribute__((aligned(64)));
 
 uint8_t g_ai_buf[320 * 240 *3] __attribute__((aligned(128)));
+
+#define ANCHOR_NUM 5
+
+float g_anchor[ANCHOR_NUM * 2] = {0.57273, 0.677385, 1.87446, 2.06253, 3.33843, 5.47434, 7.88282, 3.52778, 9.77052, 9.16828};
 
 volatile uint8_t g_dvp_finish_flag = 0;
 volatile uint8_t g_ram_mux = 0;
@@ -220,7 +223,7 @@ int main(void)
         /* init ai cnn */
     kpu_task_init(&task);
     printf("KPU TASK INIT, FREE MEM: %ld\n", get_free_heap_size());
-    region_layer_init(&task, 320, 240, 0.1, 0.2);
+    region_layer_init(&task, 320, 240, 0.1, 0.2, ANCHOR_NUM, g_anchor);
     printf("REGION LAYER INIT, FREE MEM: %ld\n", get_free_heap_size());
     /* get kpu output result buf */
     uint8_t *kpu_outbuf = kpu_get_output_buf(&task);
