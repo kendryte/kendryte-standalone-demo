@@ -96,8 +96,8 @@ int uart_recv_done(void *ctx)
 
 void io_mux_init(void)
 {
-    fpioa_set_function(30, FUNC_UART1_RX + UART_NUM * 2);
-    fpioa_set_function(31, FUNC_UART1_TX + UART_NUM * 2);
+    fpioa_set_function(4, FUNC_UART1_RX + UART_NUM * 2);
+    fpioa_set_function(5, FUNC_UART1_TX + UART_NUM * 2);
     fpioa_set_function(24, FUNC_GPIOHS3);
 }
 
