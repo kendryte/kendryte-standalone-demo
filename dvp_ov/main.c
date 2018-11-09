@@ -24,7 +24,7 @@
 #include "uarths.h"
 #include "nt35310.h"
 
-#define  OV5640  0
+#define  OV5640  1
 
 uint32_t g_lcd_gram0[38400] __attribute__((aligned(64)));
 uint32_t g_lcd_gram1[38400] __attribute__((aligned(64)));
