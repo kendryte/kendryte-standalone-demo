@@ -60,7 +60,7 @@ int main(void)
             /* Set timer interval to 500ms */
             timer_set_interval(j, i, 500000000);
             /* Set timer callback function with single shot method */
-            timer_interrupt_register(j, i, 1, 1, timer_callback, &ctx_table[j * TIMER_CHANNEL_MAX + i]);
+            timer_irq_register(j, i, 1, 1, timer_callback, &ctx_table[j * TIMER_CHANNEL_MAX + i]);
             /* Enable timer */
             timer_set_enable(j, i, 1);
             LOGD(__func__, "Timer enable (%ld, %ld)=>(%ld)", j, i, j * TIMER_CHANNEL_MAX + i);
@@ -82,7 +82,7 @@ int main(void)
             /* Set timer interval to 200ms */
             timer_set_interval(j, i, 200000000);
             /* Set timer callback function with repeat method */
-            timer_interrupt_register(j, i, 0, 1, timer_callback, &ctx_table[j * TIMER_CHANNEL_MAX + i]);
+            timer_irq_register(j, i, 0, 1, timer_callback, &ctx_table[j * TIMER_CHANNEL_MAX + i]);
             /* Enable timer */
             timer_set_enable(j, i, 1);
             LOGD(__func__, "Timer enable (%ld, %ld)=>(%ld)", j, i, j * TIMER_CHANNEL_MAX + i);
@@ -98,7 +98,7 @@ int main(void)
             /* Disable timer */
             timer_set_enable(j, i, 0);
             /* Deregister every channel timer interrupt */
-            timer_interrupt_deregister(j, i);
+            timer_irq_deregister(j, i);
         }
     }
 

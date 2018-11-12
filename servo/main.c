@@ -93,7 +93,7 @@ int main(void)
     /* Set timer interval to 10ms */
     timer_set_interval(TIMER_NOR, TIMER_CHN, 10000000);
     /* Set timer callback function with repeat method */
-    timer_interrupt_register(TIMER_NOR, TIMER_CHN, 0, 1, timer_callback, NULL);
+    timer_irq_register(TIMER_NOR, TIMER_CHN, 0, 1, timer_callback, NULL);
     /* Enable timer */
     timer_set_enable(TIMER_NOR, TIMER_CHN, 1);
     /* Init PWM */

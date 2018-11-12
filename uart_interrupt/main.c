@@ -43,7 +43,7 @@ int release_cmd(char *cmd)
 int on_uart_send(void *ctx)
 {
     uint8_t v_uart = *((uint32_t *)ctx) + 1 + 0x30;
-    uart_free_irq(UART_NUM, UART_SEND);
+    uart_irq_deregister(UART_NUM, UART_SEND);
     char *v_send_ok = "Send ok Uart";
     uart_send_data(UART_NUM, v_send_ok,strlen(v_send_ok));
     uart_send_data(UART_NUM, (char *)&v_uart,1);
@@ -109,11 +109,11 @@ int main()
     uart_config(UART_NUM, 115200, 8, UART_STOP_1, UART_PARITY_NONE);
 
     uart_set_receive_trigger(UART_NUM, UART_RECEIVE_FIFO_8);
-    uart_set_irq(UART_NUM, UART_RECEIVE, on_uart_recv, NULL, 2);
+    uart_irq_register(UART_NUM, UART_RECEIVE, on_uart_recv, NULL, 2);
 
     uart_set_send_trigger(UART_NUM, UART_SEND_FIFO_0);
     uint32_t v_uart_num = UART_NUM;
-    uart_set_irq(UART_NUM, UART_SEND, on_uart_send, &v_uart_num, 2);
+    uart_irq_register(UART_NUM, UART_SEND, on_uart_send, &v_uart_num, 2);
 
     char *hel = {"hello world!\n"};
     uart_send_data(UART_NUM, hel, strlen(hel));
