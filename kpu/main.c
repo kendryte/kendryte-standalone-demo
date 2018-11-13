@@ -35,6 +35,10 @@ uint32_t g_lcd_gram1[38400] __attribute__((aligned(64)));
 
 uint8_t g_ai_buf[320 * 240 *3] __attribute__((aligned(128)));
 
+#define ANCHOR_NUM 5
+
+float g_anchor[ANCHOR_NUM * 2] = {1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52};
+
 volatile uint8_t g_dvp_finish_flag = 0;
 volatile uint8_t g_ram_mux = 0;
 
@@ -216,7 +220,7 @@ int main(void)
     /* init kpu task*/
     kpu_task_init(&task);
     /* init region layer */
-    region_layer_init(&task,320, 240, 0.5, 0.2);
+    region_layer_init(&task,320, 240, 0.5, 0.2, ANCHOR_NUM, g_anchor);
     /* get kpu output result buf */
     uint8_t *kpu_outbuf = kpu_get_output_buf(&task);
     while (1)
