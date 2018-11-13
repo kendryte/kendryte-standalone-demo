@@ -113,7 +113,7 @@ int main(void)
     gpiohs_set_pin(3, value);
 
     uart_init(UART_NUM);
-    uart_config(UART_NUM, 115200, 8, UART_STOP_1, UART_PARITY_NONE);
+    uart_configure(UART_NUM, 115200, 8, UART_STOP_1, UART_PARITY_NONE);
 
     char *hel = {"hello!\n"};
     uart_send_data_dma_irq(UART_NUM, DMAC_CHANNEL0, (uint8_t *)hel, strlen(hel), uart_send_done, NULL, 1);

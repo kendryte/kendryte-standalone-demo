@@ -58,7 +58,7 @@ int main()
     gpiohs_set_pin(3, value);
 
     uart_init(UART_NUM);
-    uart_config(UART_NUM, 115200, 8, UART_STOP_1, UART_PARITY_NONE);
+    uart_configure(UART_NUM, 115200, 8, UART_STOP_1, UART_PARITY_NONE);
 
     char *hel = {"hello world!\n"};
     uart_send_data(UART_NUM, hel, strlen(hel));
