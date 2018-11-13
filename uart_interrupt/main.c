@@ -43,7 +43,7 @@ int release_cmd(char *cmd)
 int on_uart_send(void *ctx)
 {
     uint8_t v_uart = *((uint32_t *)ctx) + 1 + 0x30;
-    uart_irq_deregister(UART_NUM, UART_SEND);
+    uart_irq_unregister(UART_NUM, UART_SEND);
     char *v_send_ok = "Send ok Uart";
     uart_send_data(UART_NUM, v_send_ok,strlen(v_send_ok));
     uart_send_data(UART_NUM, (char *)&v_uart,1);

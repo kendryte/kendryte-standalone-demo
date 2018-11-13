@@ -98,7 +98,7 @@ int main(void)
             /* Disable timer */
             timer_set_enable(j, i, 0);
             /* Deregister every channel timer interrupt */
-            timer_irq_deregister(j, i);
+            timer_irq_unregister(j, i);
         }
     }
 
