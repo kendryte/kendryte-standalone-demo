@@ -16,6 +16,8 @@
 #include "kpu.h"
 #include "region_layer.h"
 #include "board_config.h"
+#include "w25qxx.h"
+#include "model.h"
 
 #define CLASS_NUMBER     (1)
 
@@ -209,6 +211,9 @@ int main(void)
 
     lable_init();
 
+    w25qxx_init(3, 0);
+    w25qxx_enable_quad_mode();
+
     /* LCD init */
     printf("LCD init\n");
     lcd_init();
@@ -273,7 +278,7 @@ int main(void)
         /* init ai cnn */
     kpu_task_init(&task);
     printf("KPU TASK INIT, FREE MEM: %ld\n", get_free_heap_size());
-    region_layer_init(&task, 320, 240, 0.1, 0.2, ANCHOR_NUM, g_anchor);
+    region_layer_init(&task, 320, 240, 0.8, 0.2, ANCHOR_NUM, g_anchor);
     printf("REGION LAYER INIT, FREE MEM: %ld\n", get_free_heap_size());
     /* get kpu output result buf */
     uint8_t *kpu_outbuf = kpu_get_output_buf(&task);
