@@ -6,7 +6,7 @@
 /* clang-format off */
 #define NO_OPERATION            0x00
 #define SOFTWARE_RESET          0x01
-#define READ_ID                 0x04
+//#define READ_ID                 0x04
 #define READ_STATUS             0x09
 #define READ_POWER_MODE         0x0A
 #define READ_MADCTL             0x0B
@@ -82,6 +82,7 @@
 #define INTERFACE_CTL           0xF6
 
 #define DCX_GPIONUM             (2)
+#define RST_GPIONUM             (0)
 
 #define SPI_CHANNEL             0
 #define SPI_SLAVE_SELECT        3

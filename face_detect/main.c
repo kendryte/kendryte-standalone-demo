@@ -15,19 +15,27 @@
 #include "utils.h"
 #include "kpu.h"
 #include "region_layer.h"
+#include "wdt.h"
 #include "board_config.h"
 #include "w25qxx.h"
 #include "model.h"
 
 #define CLASS_NUMBER     (1)
 
-#define PLL0_OUTPUT_FREQ 1000000000UL
+#define PLL0_OUTPUT_FREQ 800000000UL
 #define PLL1_OUTPUT_FREQ 300000000UL
 #define PLL2_OUTPUT_FREQ 45158400UL
 
 kpu_task_t task;
 
 volatile uint32_t g_ai_done_flag;
+
+int wdt_irq(void *ctx)
+{
+    printf("wdt irq\n");
+    while(1);
+    return 0;
+}
 
 static int ai_done(void *ctx)
 {
@@ -84,6 +92,7 @@ static void io_mux_init(void)
     fpioa_set_function(38, FUNC_GPIOHS0 + DCX_GPIONUM);
     fpioa_set_function(36, FUNC_SPI0_SS3);
     fpioa_set_function(39, FUNC_SPI0_SCLK);
+    fpioa_set_function(37, FUNC_GPIOHS0 + RST_GPIONUM);
 
     sysctl_set_spi0_dvp_data(1);
 #else
@@ -201,13 +210,16 @@ int main(void)
     /* Set CPU and dvp clk */
     sysctl_pll_set_freq(SYSCTL_PLL0, PLL0_OUTPUT_FREQ);
     sysctl_pll_set_freq(SYSCTL_PLL1, PLL1_OUTPUT_FREQ);
-    sysctl_pll_set_freq(SYSCTL_PLL2, PLL2_OUTPUT_FREQ);
+//    sysctl_pll_set_freq(SYSCTL_PLL2, PLL2_OUTPUT_FREQ);
     sysctl_clock_enable(SYSCTL_CLOCK_AI);
     uarths_init();
 
     io_mux_init();
     io_set_power();
     plic_init();
+
+    /* wdt init */
+    wdt_start(0, 2000, wdt_irq);
 
     lable_init();
 
@@ -218,17 +230,9 @@ int main(void)
     printf("LCD init\n");
     lcd_init();
 #if BOARD_LICHEEDAN
-    #if OV5640
-        lcd_set_direction(DIR_YX_RLUD);
-    #else
-        lcd_set_direction(DIR_YX_RLDU);
-    #endif
+    lcd_set_direction(DIR_YX_RLDU);
 #else
-    #if OV5640
-        lcd_set_direction(DIR_YX_LRUD);
-    #else
-        lcd_set_direction(DIR_YX_LRDU);
-    #endif
+    lcd_set_direction(DIR_YX_RLUD);
 #endif
     lcd_clear(BLACK);
     lcd_draw_string(136, 70, "DEMO 1", WHITE);
@@ -238,6 +242,7 @@ int main(void)
     printf("DVP init\n");
     #if OV5640
     dvp_init(16);
+    dvp_set_xclk_rate(50000000);
     dvp_enable_burst();
     dvp_set_output_enable(0, 1);
     dvp_set_output_enable(1, 1);
@@ -287,6 +292,8 @@ int main(void)
         /* ai cal finish*/
         while (g_dvp_finish_flag == 0)
             ;
+        /* feed wdt */
+        wdt_feed(0);
 
         /* start to calculate */
         kpu_run(&task, 5, g_ai_buf, kpu_outbuf, ai_done);
