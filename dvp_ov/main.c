@@ -24,6 +24,7 @@
 #include "uarths.h"
 #include "nt35310.h"
 #include "board_config.h"
+#include "unistd.h"
 
 uint32_t g_lcd_gram0[38400] __attribute__((aligned(64)));
 uint32_t g_lcd_gram1[38400] __attribute__((aligned(64)));
@@ -69,6 +70,7 @@ static void io_mux_init(void)
     fpioa_set_function(38, FUNC_GPIOHS0 + DCX_GPIONUM);
     fpioa_set_function(36, FUNC_SPI0_SS3);
     fpioa_set_function(39, FUNC_SPI0_SCLK);
+    fpioa_set_function(37, FUNC_GPIOHS0 + RST_GPIONUM);
 
     sysctl_set_spi0_dvp_data(1);
 #else
@@ -109,8 +111,8 @@ static void io_set_power(void)
 int main(void)
 {
     /* Set CPU and dvp clk */
-    sysctl_pll_set_freq(SYSCTL_PLL0, 800000000UL);
-    sysctl_pll_set_freq(SYSCTL_PLL1, 300000000UL);
+    sysctl_pll_set_freq(SYSCTL_PLL0, 320000000UL);
+    sysctl_pll_set_freq(SYSCTL_PLL1, 160000000UL);
     sysctl_pll_set_freq(SYSCTL_PLL2, 45158400UL);
     uarths_init();
 
@@ -131,7 +133,7 @@ int main(void)
     #if OV5640
     lcd_set_direction(DIR_YX_LRUD);
     #else
-    lcd_set_direction(DIR_YX_LRDU);
+    lcd_set_direction(DIR_YX_RLUD);
     #endif
 #endif
 
@@ -141,12 +143,24 @@ int main(void)
     printf("DVP init\n");
     #if OV5640
     dvp_init(16);
+//    dvp_set_xclk_rate(50000000);
     dvp_enable_burst();
     dvp_set_output_enable(0, 1);
     dvp_set_output_enable(1, 1);
     dvp_set_image_format(DVP_CFG_RGB_FORMAT);
     dvp_set_image_size(320, 240);
     ov5640_init();
+
+#if 0
+//    OV5640_Focus_Init();
+    OV5640_Light_Mode(2);      //set auto
+    OV5640_Color_Saturation(6); //default
+    OV5640_Brightness(8);   //default
+    OV5640_Contrast(3);     //default
+//    OV5640_Sharpness(33);   //set auto
+//    OV5640_Auto_Focus();
+#endif
+
     #else
     dvp_init(8);
     dvp_set_xclk_rate(24000000);
@@ -154,6 +168,7 @@ int main(void)
     dvp_set_output_enable(0, 1);
     dvp_set_output_enable(1, 1);
     dvp_set_image_format(DVP_CFG_RGB_FORMAT);
+
     dvp_set_image_size(320, 240);
     ov2640_init();
     #endif
