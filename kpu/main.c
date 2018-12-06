@@ -20,7 +20,7 @@
 #include "kpu.h"
 #include "region_layer.h"
 
-#define PLL0_OUTPUT_FREQ 1000000000UL
+#define PLL0_OUTPUT_FREQ 800000000UL
 #define PLL1_OUTPUT_FREQ 300000000UL
 #define PLL2_OUTPUT_FREQ 45158400UL
 
@@ -218,18 +218,9 @@ int main(void)
     printf("LCD init\n");
     lcd_init();
 #if BOARD_LICHEEDAN
-    #if OV5640
-        lcd_set_direction(DIR_YX_RLUD);
-    #else
-        lcd_set_direction(DIR_YX_RLDU);
-    #endif
+    lcd_set_direction(DIR_YX_RLDU);
 #else
-    #if OV5640
-        lcd_set_direction(DIR_YX_RLUD);
-    #else
-        lcd_set_direction(DIR_YX_RLUD);
-//        lcd_set_direction(DIR_YX_LRDU);
-    #endif
+    lcd_set_direction(DIR_YX_RLUD);
 #endif
     lcd_clear(BLACK);
     lcd_draw_string(136, 70, "DEMO 1", WHITE);
@@ -239,6 +230,7 @@ int main(void)
 
     #if OV5640
     dvp_init(16);
+    dvp_set_xclk_rate(50000000);
     dvp_enable_burst();
     dvp_set_output_enable(0, 1);
     dvp_set_output_enable(1, 1);
