@@ -111,7 +111,7 @@ static void io_set_power(void)
 int main(void)
 {
     /* Set CPU and dvp clk */
-    sysctl_pll_set_freq(SYSCTL_PLL0, 320000000UL);
+    sysctl_pll_set_freq(SYSCTL_PLL0, 800000000UL);
     sysctl_pll_set_freq(SYSCTL_PLL1, 160000000UL);
     sysctl_pll_set_freq(SYSCTL_PLL2, 45158400UL);
     uarths_init();
@@ -124,17 +124,9 @@ int main(void)
     printf("LCD init\n");
     lcd_init();
 #if BOARD_LICHEEDAN
-    #if OV5640
-    lcd_set_direction(DIR_YX_RLUD);
-    #else
     lcd_set_direction(DIR_YX_RLDU);
-    #endif
 #else
-    #if OV5640
-    lcd_set_direction(DIR_YX_LRUD);
-    #else
     lcd_set_direction(DIR_YX_RLUD);
-    #endif
 #endif
 
     lcd_clear(BLACK);
@@ -143,7 +135,7 @@ int main(void)
     printf("DVP init\n");
     #if OV5640
     dvp_init(16);
-//    dvp_set_xclk_rate(50000000);
+    dvp_set_xclk_rate(50000000);
     dvp_enable_burst();
     dvp_set_output_enable(0, 1);
     dvp_set_output_enable(1, 1);
