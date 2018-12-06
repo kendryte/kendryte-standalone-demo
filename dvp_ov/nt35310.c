@@ -34,6 +34,7 @@ static void set_dcx_data(void)
     gpiohs_set_pin(DCX_GPIONUM, GPIO_PV_HIGH);
 }
 
+#if BOARD_LICHEEDAN
 static void init_rst(void)
 {
     gpiohs_set_drive_mode(RST_GPIONUM, GPIO_DM_OUTPUT);
@@ -42,17 +43,16 @@ static void init_rst(void)
     gpiohs_set_pin(RST_GPIONUM, GPIO_PV_HIGH);
     usleep(100000);
 }
+#endif
 
 void tft_hard_init(void)
 {
     init_dcx();
-    init_rst();
-    spi_init(SPI_CHANNEL, SPI_WORK_MODE_0, SPI_FF_OCTAL, 8, 0);
 #if BOARD_LICHEEDAN
-    spi_set_clk_rate(SPI_CHANNEL, 20000000);
-#else
-    spi_set_clk_rate(SPI_CHANNEL, 20000000);
+    init_rst();
 #endif
+    spi_init(SPI_CHANNEL, SPI_WORK_MODE_0, SPI_FF_OCTAL, 8, 0);
+    spi_set_clk_rate(SPI_CHANNEL, 20000000);
 }
 
 void tft_write_command(uint8_t cmd)
