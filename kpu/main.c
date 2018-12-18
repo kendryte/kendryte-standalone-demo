@@ -19,6 +19,7 @@
 #include "utils.h"
 #include "kpu.h"
 #include "region_layer.h"
+#include "gencode_output.h"
 
 #define PLL0_OUTPUT_FREQ 800000000UL
 #define PLL1_OUTPUT_FREQ 300000000UL
@@ -27,6 +28,7 @@
 #define CLASS_NUMBER 20
 
 kpu_task_t task;
+static region_layer_t detect_rl;
 
 volatile uint8_t g_ai_done_flag;
 
@@ -199,6 +201,33 @@ static void drawboxes(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32
 #endif
 }
 
+void image_rgb888_to_rgb565(uint8_t *src_image, uint16_t *dest_image, uint32_t width, uint32_t height)
+{
+    uint8_t *v_src_r = src_image;
+    uint8_t *v_src_g = src_image + width * height;
+    uint8_t *v_src_b = src_image + width * height * 2;
+    uint32_t i;
+    for(i = 0; i < width * height; i++)
+    {
+        uint16_t B = (v_src_b[i] >> 3) & 0x001F;
+        uint16_t G = ((v_src_g[i] >> 2) << 5) & 0x07E0;
+        uint16_t R = ((v_src_r[i] >> 3) << 11) & 0xF800;
+        dest_image[i] = (R | G | B);
+    }
+}
+
+void image_swap(uint16_t *image, uint32_t width, uint32_t heigt)
+{
+    uint32_t i;
+    uint16_t v_tmp;
+    for(i = 0; i < width * heigt / 2; i++)
+    {
+        v_tmp = image[2 * i];
+        image[2 * i] = image[2 * i + 1];
+        image[2 * i + 1] = v_tmp;
+    }
+}
+
 int main(void)
 {
     /* Set CPU and dvp clk */
@@ -270,12 +299,19 @@ int main(void)
     dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
-    /* init kpu task*/
+/* init face detect model */
+    kpu_task_gencode_output_init(&task);
+    task.src = g_ai_buf;
+    task.dma_ch = 5;
+    task.callback = ai_done;
     kpu_task_init(&task);
-    /* init region layer */
-    region_layer_init(&task,320, 240, 0.5, 0.2, ANCHOR_NUM, g_anchor);
-    /* get kpu output result buf */
-    uint8_t *kpu_outbuf = kpu_get_output_buf(&task);
+
+    detect_rl.anchor_number = ANCHOR_NUM;
+    detect_rl.anchor = g_anchor;
+    detect_rl.threshold = 0.7;
+    detect_rl.nms_value = 0.3;
+    region_layer_init(&detect_rl, &task);
+
     while (1)
     {
         /* dvp finish*/
@@ -283,13 +319,12 @@ int main(void)
             ;
 
         /* start to calculate */
-        kpu_run(&task, DMAC_CHANNEL5, g_ai_buf, kpu_outbuf, ai_done);
-
+        kpu_run(&task);
         while(!g_ai_done_flag);
         g_ai_done_flag = 0;
 
         /* start region layer */
-        region_layer_cal((uint8_t *)kpu_outbuf);
+        region_layer_run(&detect_rl, NULL);
 
         /* display pic*/
         g_ram_mux ^= 0x01;
@@ -297,8 +332,9 @@ int main(void)
         g_dvp_finish_flag = 0;
 
         /* draw boxs */
-        region_layer_draw_boxes(drawboxes);
+        region_layer_draw_boxes(&detect_rl, drawboxes);
     }
+
 
     return 0;
 }

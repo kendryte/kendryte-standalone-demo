@@ -1,168 +1,144 @@
-#include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <math.h>
-#include "kpu.h"
+#include <stdio.h>
 #include "region_layer.h"
 
-typedef struct box_t {
-    float x, y, w, h;
-} box;
+typedef struct
+{
+    float x;
+    float y;
+    float w;
+    float h;
+} box_t;
 
-typedef struct{
+typedef struct
+{
     int index;
     int class;
     float **probs;
-} sortable_bbox;
+} sortable_box_t;
 
-uint32_t region_layer_img_w;
-uint32_t region_layer_img_h;
-uint32_t region_layer_net_w;
-uint32_t region_layer_net_h;
-float region_layer_thresh;
-float region_layer_nms;
 
-// params parse_net_options
-uint32_t region_layer_l_h;  // From 14 conv
-uint32_t region_layer_l_w; // From 14 conv
-uint32_t region_layer_boxes;
-uint32_t region_layer_outputs;
-// parse_region
-uint32_t region_layer_l_classes;
-uint32_t region_layer_l_coords = 4;
-uint32_t region_layer_l_n;
-
-static float *output = NULL;
-static box *boxes = NULL;
-static float *probs_buf = NULL;
-static float **probs = NULL;
-static float *l_biases;
-#ifndef DEBUG_FLOAT
-#include "region_layer_array.include"
-#endif
-
-int region_layer_init(kpu_task_t *task,uint32_t display_width, uint32_t display_hight, float layer_thresh, float layer_nms, uint32_t anchor_num, float *anchor_ptr)
+int region_layer_init(region_layer_t *rl, kpu_task_t *task)
 {
-    kpu_layer_argument_t* last_layer = &task->layers[task->layers_length-1];
-    kpu_layer_argument_t* first_layer = &task->layers[0];
+    int flag = 0;
+    kpu_layer_argument_t *last_layer = &task->layers[task->layers_length-1];
+    kpu_layer_argument_t *first_layer = &task->layers[0];
 
-    region_layer_thresh = layer_thresh;
-    region_layer_nms = layer_nms;
+    rl->coords = 4;
+    rl->image_width = 320;
+    rl->image_height = 240;
 
-    region_layer_img_w = display_width;
-    region_layer_img_h = display_hight;
+    rl->classes = (last_layer->image_channel_num.data.o_ch_num + 1) / 5 - 5;
+    rl->net_width = first_layer->image_size.data.i_row_wid + 1;
+    rl->net_height = first_layer->image_size.data.i_col_high + 1;
+    rl->layer_width = last_layer->image_size.data.o_row_wid + 1;
+    rl->layer_height = last_layer->image_size.data.o_col_high + 1;
+    rl->boxes_number = (rl->layer_width * rl->layer_height * rl->anchor_number);
+    rl->output_number = (rl->boxes_number * (rl->classes + rl->coords + 1));
+    rl->input = task->dst;
+    rl->scale = task->output_scale;
+    rl->bias = task->output_bias;
 
-    l_biases = anchor_ptr;
-    region_layer_l_n = anchor_num;
-
-    region_layer_l_classes = (last_layer->image_channel_num.data.o_ch_num + 1) / 5 - 5;
-
-    region_layer_net_w = first_layer->image_size.data.i_row_wid + 1;
-    region_layer_net_h = first_layer->image_size.data.i_col_high + 1;
-
-    region_layer_l_w = last_layer->image_size.data.o_row_wid + 1;
-    region_layer_l_h = last_layer->image_size.data.o_col_high + 1;
-
-    size_t output_size = ((last_layer->dma_parameter.data.dma_total_byte + 1) + 7) / 8 * 8;
-    printf("output_size is %ld\n", output_size);
-
-    printf("region_layer_l_classes is %d\n", region_layer_l_classes);
-    printf("region_layer_net_w is %d\n", region_layer_net_w);
-    printf("region_layer_net_h is %d\n", region_layer_net_h);
-    printf("region_layer_l_w is %d\n", region_layer_l_w);
-    printf("region_layer_l_h is %d\n", region_layer_l_h);
-
-    region_layer_boxes = (region_layer_l_h * region_layer_l_w * region_layer_l_n); // l.w * l.h * l.n
-    region_layer_outputs = (region_layer_boxes * (region_layer_l_classes + region_layer_l_coords + 1)); // l.h * l.w * l.n * (l.classes + l.coords + 1)
-    printf("regin_layer_outputs is %d\n", region_layer_outputs);
-    if(region_layer_outputs > output_size)
+    rl->output = malloc(rl->output_number * sizeof(float));
+    if (rl->output == NULL)
     {
-        printf("Memory overun\n");
-        return -1;
+        flag = -1;
+        goto malloc_error;
     }
-    output = malloc(region_layer_outputs * sizeof(float));
-    if(output == NULL)
-        return -1;
-    boxes = malloc(region_layer_boxes * sizeof(box));
-    if(output == NULL)
+    rl->boxes = malloc(rl->boxes_number * sizeof(box_t));
+    if (rl->boxes == NULL)
     {
-        free(output);
-        return -1;
+        flag = -2;
+        goto malloc_error;
     }
-    probs_buf = malloc(region_layer_boxes * (region_layer_l_classes + 1) * sizeof(float));
-    if(probs_buf == NULL)
+    rl->probs_buf = malloc(rl->boxes_number * (rl->classes + 1) * sizeof(float));
+    if (rl->probs_buf == NULL)
     {
-        free(output);
-        free(boxes);
-        return -1;
+        flag = -3;
+        goto malloc_error;
     }
-    probs = malloc(region_layer_boxes * sizeof(float *));
-    if(probs == NULL)
+    rl->probs = malloc(rl->boxes_number * sizeof(float *));
+    if (rl->probs == NULL)
     {
-        free(output);
-        free(boxes);
-        free(probs_buf);
-        return -1;
+        flag = -4;
+        goto malloc_error;
     }
+    rl->activate = malloc(256 * sizeof(float));
+    if (rl->activate == NULL)
+    {
+        flag = -5;
+        goto malloc_error;
+    }
+    rl->softmax = malloc(256 * sizeof(float));
+    if (rl->softmax == NULL)
+    {
+        flag = -5;
+        goto malloc_error;
+    }
+    for (int i = 0; i < 256; i++)
+    {
+        rl->activate[i] = 1.0 / (1.0 + expf(-(i * rl->scale + rl->bias)));
+        rl->softmax[i] = expf(rl->scale * (i - 255));
+    }
+    for (uint32_t i = 0; i < rl->boxes_number; i++)
+        rl->probs[i] = &(rl->probs_buf[i * (rl->classes + 1)]);
     return 0;
+malloc_error:
+    free(rl->output);
+    free(rl->boxes);
+    free(rl->probs_buf);
+    free(rl->probs);
+    free(rl->activate);
+    free(rl->softmax);
+    return flag;
 }
 
-void region_layer_deinit(kpu_task_t *task)
+void region_layer_deinit(region_layer_t *rl)
 {
-    if(output != NULL)
-        free(output);
-    if(boxes != NULL)
-        free(boxes);
-    if(probs_buf != NULL)
-        free(probs_buf);
-    if(probs != NULL)
-        free(probs);
+    free(rl->output);
+    free(rl->boxes);
+    free(rl->probs_buf);
+    free(rl->probs);
+    free(rl->activate);
+    free(rl->softmax);
 }
 
-static  void activate_array(float *x, const int n, const INPUT_TYPE *input)
+static void activate_array(region_layer_t *rl, int index, int n)
 {
+    float *output = &rl->output[index];
+    uint8_t *input = &rl->input[index];
+
     for (int i = 0; i < n; ++i)
-#ifdef DEBUG_FLOAT
-        x[i] = 1.0f / (1.0f + expf(-input[i]));
-#else
-        x[i] = activate_array_acc[input[i]];
-#endif
+        output[i] = rl->activate[input[i]];
 }
 
-static  int entry_index(int location, int entry)
+static int entry_index(region_layer_t *rl, int location, int entry)
 {
-    int n   = location / (region_layer_l_w * region_layer_l_h);
-    int loc = location % (region_layer_l_w * region_layer_l_h);
+    int wh = rl->layer_width * rl->layer_height;
+    int n   = location / wh;
+    int loc = location % wh;
 
-    return n * region_layer_l_w * region_layer_l_h *
-        (region_layer_l_coords + region_layer_l_classes + 1) +
-        entry * region_layer_l_w * region_layer_l_h + loc;
+    return n * wh * (rl->coords + rl->classes + 1) + entry * wh + loc;
 }
 
-static  void softmax(const INPUT_TYPE *u8in, int n, int stride, float *output)
+static void softmax(region_layer_t *rl, uint8_t *input, int n, int stride, float *output)
 {
     int i;
+    int diff;
     float e;
     float sum = 0;
-    INPUT_TYPE largest_i = u8in[0];
-#ifdef DEBUG_FLOAT
-    float diff;
-#else
-    int diff;
-#endif
+    uint8_t largest_i = input[0];
 
-    for (i = 0; i < n; ++i) {
-        if (u8in[i * stride] > largest_i)
-            largest_i = u8in[i * stride];
+    for (i = 0; i < n; ++i)
+    {
+        if (input[i * stride] > largest_i)
+            largest_i = input[i * stride];
     }
 
     for (i = 0; i < n; ++i) {
-        diff = u8in[i * stride] - largest_i;
-#ifdef DEBUG_FLOAT
-        e = expf(diff);
-#else
-        e = softmax_acc[diff + 255];
-#endif
+        diff = input[i * stride] - largest_i;
+        e = rl->softmax[diff + 255];
         sum += e;
         output[i * stride] = e;
     }
@@ -170,66 +146,71 @@ static  void softmax(const INPUT_TYPE *u8in, int n, int stride, float *output)
         output[i * stride] /= sum;
 }
 
-static  void softmax_cpu(const INPUT_TYPE *input, int n, int batch, int batch_offset, int groups, int stride, float *output)
+static void softmax_cpu(region_layer_t *rl, uint8_t *input, int n, int batch, int batch_offset, int groups, int stride, float *output)
 {
     int g, b;
 
     for (b = 0; b < batch; ++b) {
         for (g = 0; g < groups; ++g)
-            softmax(input + b * batch_offset + g, n, stride, output + b * batch_offset + g);
+            softmax(rl, input + b * batch_offset + g, n, stride, output + b * batch_offset + g);
     }
 }
 
-static  void forward_region_layer(const INPUT_TYPE *u8in, float *output)
+static void forward_region_layer(region_layer_t *rl)
 {
-    volatile int n, index;
+    int index;
 
-    for (index = 0; index < region_layer_outputs; index++)
-        output[index] = u8in[index] * scale + bais;
+    for (index = 0; index < rl->output_number; index++)
+        rl->output[index] = rl->input[index] * rl->scale + rl->bias;
 
-    for (n = 0; n < region_layer_l_n; ++n) {
-        index = entry_index(n * region_layer_l_w * region_layer_l_h, 0);
-        activate_array(output + index, 2 * region_layer_l_w * region_layer_l_h, u8in + index);
-        index = entry_index(n * region_layer_l_w * region_layer_l_h, 4);
-        activate_array(output + index, region_layer_l_w * region_layer_l_h, u8in + index);
+    for (int n = 0; n < rl->anchor_number; ++n)
+    {
+        index = entry_index(rl, n * rl->layer_width * rl->layer_height, 0);
+        activate_array(rl, index, 2 * rl->layer_width * rl->layer_height);
+        index = entry_index(rl, n * rl->layer_width * rl->layer_height, 4);
+        activate_array(rl, index, rl->layer_width * rl->layer_height);
     }
 
-    index = entry_index(0, 5);
-    softmax_cpu(u8in + index, region_layer_l_classes, region_layer_l_n,
-            region_layer_outputs / region_layer_l_n,
-            region_layer_l_w * region_layer_l_h,
-            region_layer_l_w * region_layer_l_h, output + index);
+    index = entry_index(rl, 0, rl->coords + 1);
+    softmax_cpu(rl, rl->input + index, rl->classes, rl->anchor_number,
+            rl->output_number / rl->anchor_number, rl->layer_width * rl->layer_height,
+            rl->layer_width * rl->layer_height, rl->output + index);
 }
 
-static  void correct_region_boxes(box *boxes)
+static void correct_region_boxes(region_layer_t *rl, box_t *boxes)
 {
+    uint32_t net_width = rl->net_width;
+    uint32_t net_height = rl->net_height;
+    uint32_t image_width = rl->image_width;
+    uint32_t image_height = rl->image_height;
+    uint32_t boxes_number = rl->boxes_number;
     int new_w = 0;
     int new_h = 0;
 
-    if (((float)region_layer_net_w / region_layer_img_w) <
-        ((float)region_layer_net_h / region_layer_img_h)) {
-        new_w = region_layer_net_w;
-        new_h = (region_layer_img_h * region_layer_net_w) / region_layer_img_w;
+    if (((float)net_width / image_width) <
+        ((float)net_height / image_height)) {
+        new_w = net_width;
+        new_h = (image_height * net_width) / image_width;
     } else {
-        new_h = region_layer_net_h;
-        new_w = (region_layer_img_w * region_layer_net_h) / region_layer_img_h;
+        new_h = net_height;
+        new_w = (image_width * net_height) / image_height;
     }
-    for (int i = 0; i < region_layer_boxes; ++i) {
-        volatile box b = boxes[i];
+    for (int i = 0; i < boxes_number; ++i) {
+        box_t b = boxes[i];
 
-        b.x = (b.x - (region_layer_net_w - new_w) / 2. / region_layer_net_w) /
-              ((float)new_w / region_layer_net_w);
-        b.y = (b.y - (region_layer_net_h - new_h) / 2. / region_layer_net_h) /
-              ((float)new_h / region_layer_net_h);
-        b.w *= (float)region_layer_net_w / new_w;
-        b.h *= (float)region_layer_net_h / new_h;
+        b.x = (b.x - (net_width - new_w) / 2. / net_width) /
+              ((float)new_w / net_width);
+        b.y = (b.y - (net_height - new_h) / 2. / net_height) /
+              ((float)new_h / net_height);
+        b.w *= (float)net_width / new_w;
+        b.h *= (float)net_height / new_h;
         boxes[i] = b;
     }
 }
 
-static  box get_region_box(float *x, const float *biases, int n, int index, int i, int j, int w, int h, int stride)
+static box_t get_region_box(float *x, float *biases, int n, int index, int i, int j, int w, int h, int stride)
 {
-    volatile box b;
+    volatile box_t b;
 
     b.x = (i + x[index + 0 * stride]) / w;
     b.y = (j + x[index + 1 * stride]) / h;
@@ -238,47 +219,55 @@ static  box get_region_box(float *x, const float *biases, int n, int index, int 
     return b;
 }
 
-static  void get_region_boxes(float *predictions, float **probs, box *boxes)
+static void get_region_boxes(region_layer_t *rl, float *predictions, float **probs, box_t *boxes)
 {
-    for (int i = 0; i < region_layer_l_w * region_layer_l_h; ++i) {
-        volatile int row = i / region_layer_l_w;
-        volatile int col = i % region_layer_l_w;
+    uint32_t layer_width = rl->layer_width;
+    uint32_t layer_height = rl->layer_height;
+    uint32_t anchor_number = rl->anchor_number;
+    uint32_t classes = rl->classes;
+    uint32_t coords = rl->coords;
+    float threshold = rl->threshold;
 
-        for (int n = 0; n < region_layer_l_n; ++n) {
-            int index = n * region_layer_l_w * region_layer_l_h + i;
+    for (int i = 0; i < layer_width * layer_height; ++i)
+    {
+        int row = i / layer_width;
+        int col = i % layer_width;
 
-            for (int j = 0; j < region_layer_l_classes; ++j)
+        for (int n = 0; n < anchor_number; ++n)
+        {
+            int index = n * layer_width * layer_height + i;
+
+            for (int j = 0; j < classes; ++j)
                 probs[index][j] = 0;
-            int obj_index = entry_index(n * region_layer_l_w * region_layer_l_h + i, 4);
-            int box_index = entry_index(n * region_layer_l_w * region_layer_l_h + i, 0);
+            int obj_index = entry_index(rl, n * layer_width * layer_height + i, coords);
+            int box_index = entry_index(rl, n * layer_width * layer_height + i, 0);
             float scale  = predictions[obj_index];
 
-            boxes[index] = get_region_box(
-                predictions, l_biases, n, box_index, col, row,
-                region_layer_l_w, region_layer_l_h,
-                region_layer_l_w * region_layer_l_h);
+            boxes[index] = get_region_box(predictions, rl->anchor, n, box_index, col, row,
+                layer_width, layer_height, layer_width * layer_height);
 
             float max = 0;
 
-            for (int j = 0; j < region_layer_l_classes; ++j) {
-                int class_index = entry_index(n * region_layer_l_w * region_layer_l_h + i, 5 + j);
+            for (int j = 0; j < classes; ++j)
+            {
+                int class_index = entry_index(rl, n * layer_width * layer_height + i, coords + 1 + j);
                 float prob = scale * predictions[class_index];
 
-                probs[index][j] = (prob > region_layer_thresh) ? prob : 0;
+                probs[index][j] = (prob > threshold) ? prob : 0;
                 if (prob > max)
                     max = prob;
             }
-            probs[index][region_layer_l_classes] = max;
+            probs[index][classes] = max;
         }
     }
-    correct_region_boxes(boxes);
+    correct_region_boxes(rl, boxes);
 }
 
-static  int nms_comparator(const void *pa, const void *pb)
+static int nms_comparator(void *pa, void *pb)
 {
-    volatile sortable_bbox a = *(sortable_bbox *)pa;
-    volatile sortable_bbox b = *(sortable_bbox *)pb;
-    volatile float diff = a.probs[a.index][b.class] - b.probs[b.index][b.class];
+    sortable_box_t a = *(sortable_box_t *)pa;
+    sortable_box_t b = *(sortable_box_t *)pb;
+    float diff = a.probs[a.index][b.class] - b.probs[b.index][b.class];
 
     if (diff < 0)
         return 1;
@@ -287,7 +276,7 @@ static  int nms_comparator(const void *pa, const void *pb)
     return 0;
 }
 
-static  float overlap(float x1, float w1, float x2, float w2)
+static float overlap(float x1, float w1, float x2, float w2)
 {
     float l1 = x1 - w1/2;
     float l2 = x2 - w2/2;
@@ -299,7 +288,7 @@ static  float overlap(float x1, float w1, float x2, float w2)
     return right - left;
 }
 
-static  float box_intersection(box a, box b)
+static float box_intersection(box_t a, box_t b)
 {
     float w = overlap(a.x, a.w, b.x, b.w);
     float h = overlap(a.y, a.h, b.y, b.h);
@@ -309,7 +298,7 @@ static  float box_intersection(box a, box b)
     return w * h;
 }
 
-static  float box_union(box a, box b)
+static float box_union(box_t a, box_t b)
 {
     float i = box_intersection(a, b);
     float u = a.w * a.h + b.w * b.h - i;
@@ -317,48 +306,57 @@ static  float box_union(box a, box b)
     return u;
 }
 
-static  float box_iou(box a, box b)
+static float box_iou(box_t a, box_t b)
 {
-    return box_intersection(a, b)/box_union(a, b);
+    return box_intersection(a, b) / box_union(a, b);
 }
 
-static  void do_nms_sort(box *boxes, float **probs)
+static void do_nms_sort(region_layer_t *rl, box_t *boxes, float **probs)
 {
+    uint32_t boxes_number = rl->boxes_number;
+    uint32_t classes = rl->classes;
+    uint32_t nms_value = rl->nms_value;
     int i, j, k;
-    sortable_bbox s[region_layer_boxes];
+    sortable_box_t s[boxes_number];
 
-    for (i = 0; i < region_layer_boxes; ++i) {
+    for (i = 0; i < boxes_number; ++i)
+    {
         s[i].index = i;
         s[i].class = 0;
         s[i].probs = probs;
     }
 
-    for (k = 0; k < region_layer_l_classes; ++k) {
-        for (i = 0; i < region_layer_boxes; ++i)
+    for (k = 0; k < classes; ++k)
+    {
+        for (i = 0; i < boxes_number; ++i)
             s[i].class = k;
-        qsort(s, region_layer_boxes, sizeof(sortable_bbox), nms_comparator);
-        for (i = 0; i < region_layer_boxes; ++i) {
+        qsort(s, boxes_number, sizeof(sortable_box_t), nms_comparator);
+        for (i = 0; i < boxes_number; ++i)
+        {
             if (probs[s[i].index][k] == 0)
                 continue;
-            volatile box a = boxes[s[i].index];
+            box_t a = boxes[s[i].index];
 
-            for (j = i+1; j < region_layer_boxes; ++j) {
-                volatile box b = boxes[s[j].index];
+            for (j = i + 1; j < boxes_number; ++j)
+            {
+                box_t b = boxes[s[j].index];
 
-                if (box_iou(a, b) > region_layer_nms)
+                if (box_iou(a, b) > nms_value)
                     probs[s[j].index][k] = 0;
             }
         }
     }
 }
 
-static  int max_index(float *a, int n)
+static int max_index(float *a, int n)
 {
     int i, max_i = 0;
     float max = a[0];
 
-    for (i = 1; i < n; ++i) {
-        if (a[i] > max) {
+    for (i = 1; i < n; ++i)
+    {
+        if (a[i] > max)
+        {
             max   = a[i];
             max_i = i;
         }
@@ -366,37 +364,64 @@ static  int max_index(float *a, int n)
     return max_i;
 }
 
-void region_layer_cal(INPUT_TYPE *u8in)
+static void region_layer_output(region_layer_t *rl, obj_info_t *obj_info)
 {
-    forward_region_layer(u8in, output);
+    uint32_t obj_number = 0;
+    uint32_t image_width = rl->image_width;
+    uint32_t image_height = rl->image_height;
+    uint32_t boxes_number = rl->boxes_number;
+    float threshold = rl->threshold;
+    box_t *boxes = (box_t *)rl->boxes;
 
-    for (int i = 0; i < region_layer_boxes; i++)
+    for (int i = 0; i < rl->boxes_number; ++i)
     {
-        probs[i] = &(probs_buf[i * (region_layer_l_classes + 1)]);
-    }
+        int class  = max_index(rl->probs[i], rl->classes);
+        float prob = rl->probs[i][class];
 
-    get_region_boxes(output, probs, boxes);
-    do_nms_sort(boxes, probs);
+        if (prob > threshold)
+        {
+            box_t *b = boxes + i;
+            obj_info->obj[obj_number].x1 = b->x * image_width - (b->w * image_width / 2);
+            obj_info->obj[obj_number].y1 = b->y * image_height - (b->h * image_height / 2);
+            obj_info->obj[obj_number].x2 = b->x * image_width + (b->w * image_width / 2);
+            obj_info->obj[obj_number].y2 = b->y * image_height + (b->h * image_height / 2);
+            obj_info->obj[obj_number].class_id = class;
+            obj_info->obj[obj_number].prob = prob;
+            obj_number++;
+        }
+    }
+    obj_info->obj_number = obj_number;
 }
 
-void region_layer_draw_boxes(callback_draw_box callback)
+void region_layer_run(region_layer_t *rl, obj_info_t *obj_info)
 {
-    for (int i = 0; i < region_layer_boxes; ++i) {
-        volatile int class  = max_index(probs[i], region_layer_l_classes);
-        volatile float prob = probs[i][class];
+    forward_region_layer(rl);
+    get_region_boxes(rl, rl->output, rl->probs, rl->boxes);
+    do_nms_sort(rl, rl->boxes, rl->probs);
+//    region_layer_output(rl, obj_info);
+}
 
-        if (prob > region_layer_thresh) {
-            volatile box *b      = boxes + i;
-            uint32_t x1 = b->x * region_layer_img_w -
-                      (b->w * region_layer_img_w / 2);
-            uint32_t y1 = b->y * region_layer_img_h -
-                      (b->h * region_layer_img_h / 2);
-            uint32_t x2 = b->x * region_layer_img_w +
-                      (b->w * region_layer_img_w / 2);
-            uint32_t y2 = b->y * region_layer_img_h +
-                      (b->h * region_layer_img_h / 2);
+void region_layer_draw_boxes(region_layer_t *rl, callback_draw_box callback)
+{
+    uint32_t image_width = rl->image_width;
+    uint32_t image_height = rl->image_height;
+    float threshold = rl->threshold;
+    box_t *boxes = (box_t *)rl->boxes;
 
+    for (int i = 0; i < rl->boxes_number; ++i)
+    {
+        int class  = max_index(rl->probs[i], rl->classes);
+        float prob = rl->probs[i][class];
+
+        if (prob > threshold)
+        {
+            box_t *b = boxes + i;
+            uint32_t x1 = b->x * image_width - (b->w * image_width / 2);
+            uint32_t y1 = b->y * image_height - (b->h * image_height / 2);
+            uint32_t x2 = b->x * image_width + (b->w * image_width / 2);
+            uint32_t y2 = b->y * image_height + (b->h * image_height / 2);
             callback(x1, y1, x2, y2, class, prob);
         }
     }
 }
+
