@@ -16,7 +16,7 @@
 #define _OV5640CFG_H
 
 #include "ov5640.h"
-#if 0
+#if 1
 
 const uint16_t ov5640_init_reg_tbl[][2]=
 {
@@ -27,7 +27,7 @@ const uint16_t ov5640_init_reg_tbl[][2]=
     {0x3018, 0xff}, // D[5:0], GPIO[1:0] output enable
     {0x3034, 0x1a}, // MIPI 10-bit
     {0x3035, 0x41},//0x41, // PLL
-    {0x3036, 0x60}, // PLL
+    {0x3036, 0x90}, // PLL
     {0x3037, 0x13},//0x13, // PLL root divider, bit[4], PLL pre-divider, bit[3:0]
     {0x3108, 0x01}, // PCLK root divider, bit[5:4], SCLK2x root divider, bit[3:2], SCLK root divider, bit[1:0]
     {0x3630, 0x36},
@@ -79,7 +79,7 @@ const uint16_t ov5640_init_reg_tbl[][2]=
     {0x302e, 0x00},
     {0x4300, 0x61},
     {0X501F, 0x01},
-    {0x3820, 0x46}, // flip
+    {0x3820, 0x40}, // flip
     {0x3821, 0x00}, // mirror
     {0x3814, 0x71}, // timing X inc
     {0x3815, 0x35}, // timing Y inc
