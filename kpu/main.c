@@ -299,12 +299,12 @@ int main(void)
     dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
-/* init face detect model */
+    /* init kpu */
     kpu_task_gencode_output_init(&task);
     task.src = g_ai_buf;
     task.dma_ch = 5;
     task.callback = ai_done;
-    kpu_task_init(&task);
+    kpu_single_task_init(&task);
 
     detect_rl.anchor_number = ANCHOR_NUM;
     detect_rl.anchor = g_anchor;
@@ -319,7 +319,7 @@ int main(void)
             ;
 
         /* start to calculate */
-        kpu_run(&task);
+        kpu_start(&task);
         while(!g_ai_done_flag);
         g_ai_done_flag = 0;
 
