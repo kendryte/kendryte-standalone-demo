@@ -234,7 +234,6 @@ int main(void)
     sysctl_pll_set_freq(SYSCTL_PLL0, PLL0_OUTPUT_FREQ);
     sysctl_pll_set_freq(SYSCTL_PLL1, PLL1_OUTPUT_FREQ);
     sysctl_pll_set_freq(SYSCTL_PLL2, PLL2_OUTPUT_FREQ);
-    sysctl_clock_enable(SYSCTL_CLOCK_AI);
     uarths_init();
 
     io_mux_init();
@@ -334,7 +333,6 @@ int main(void)
         /* draw boxs */
         region_layer_draw_boxes(&detect_rl, drawboxes);
     }
-
 
     return 0;
 }

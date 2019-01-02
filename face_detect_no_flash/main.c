@@ -212,7 +212,7 @@ s    dvp_set_image_size(320, 240);
     task.src = g_ai_buf;
     task.dma_ch = 5;
     task.callback = ai_done;
-    kpu_task_init(&task);
+    kpu_single_task_init(&task);
 
     detect_rl.anchor_number = ANCHOR_NUM;
     detect_rl.anchor = g_anchor;
@@ -226,7 +226,7 @@ s    dvp_set_image_size(320, 240);
             ;
 
         /* start to calculate */
-        kpu_run(&task);
+        kpu_start(&task);
         while(!g_ai_done_flag);
         g_ai_done_flag = 0;
 
