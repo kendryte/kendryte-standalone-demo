@@ -3,11 +3,11 @@
 #include "timer.h"
 #include "pwm.h"
 /* Audio Parsing Constants */
-#define  RIFF_ID		0x52494646  /* correspond to the letters 'RIFF' */
-#define  WAVE_ID		0x57415645  /* correspond to the letters 'WAVE' */
-#define  FMT_ID			0x666D7420  /* correspond to the letters 'fmt ' */
-#define  LIST_ID		0x4C495354  /* correspond to the letters 'LIST' */
-#define  DATA_ID		0x64617461  /* correspond to the letters 'data' */
+#define  RIFF_ID        0x52494646  /* correspond to the letters 'RIFF' */
+#define  WAVE_ID        0x57415645  /* correspond to the letters 'WAVE' */
+#define  FMT_ID         0x666D7420  /* correspond to the letters 'fmt ' */
+#define  LIST_ID        0x4C495354  /* correspond to the letters 'LIST' */
+#define  DATA_ID        0x64617461  /* correspond to the letters 'data' */
 
 typedef struct _pwm_play_info_t
 {
@@ -26,29 +26,29 @@ typedef struct _pwm_play_info_t
 
 
 typedef struct {
-	uint16_t numchannels;
-	uint32_t samplerate;
-	uint32_t byterate;
-	uint16_t blockalign;
-	uint16_t bitspersample;
-	uint32_t datasize;
+    uint16_t numchannels;
+    uint32_t samplerate;
+    uint32_t byterate;
+    uint16_t blockalign;
+    uint16_t bitspersample;
+    uint32_t datasize;
 } __attribute__((packed, aligned(4))) wav_info_t;
 
 /* Error Identification structure */
 enum errorcode_e {
-	OK = 0,
+    OK = 0,
     DEVICE_BUSY,
-	UNVALID_RIFF_ID,
-	UNVALID_RIFF_SIZE,
-	UNVALID_WAVE_ID,
-	UNVALID_FMT_ID,
-	UNVALID_FMT_SIZE,
-	UNSUPPORETD_FORMATTAG,
-	UNSUPPORETD_NUMBER_OF_CHANNEL,
-	UNSUPPORETD_SAMPLE_RATE,
-	UNSUPPORETD_BITS_PER_SAMPLE,
-	UNVALID_LIST_SIZE,
-	UNVALID_DATA_ID,
+    UNVALID_RIFF_ID,
+    UNVALID_RIFF_SIZE,
+    UNVALID_WAVE_ID,
+    UNVALID_FMT_ID,
+    UNVALID_FMT_SIZE,
+    UNSUPPORETD_FORMATTAG,
+    UNSUPPORETD_NUMBER_OF_CHANNEL,
+    UNSUPPORETD_SAMPLE_RATE,
+    UNSUPPORETD_BITS_PER_SAMPLE,
+    UNVALID_LIST_SIZE,
+    UNVALID_DATA_ID,
 
 };
 

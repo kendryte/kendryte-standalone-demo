@@ -5,14 +5,13 @@
 #include <string.h>
 #include "pwm_play_audio.h"
 
-#define BG_READ_WORD(x)	((((uint32_t)wav_head_buff[x + 0]) << 24) | (((uint32_t)wav_head_buff[x + 1]) << 16) |\
-			(((uint32_t)wav_head_buff[x + 2]) << 8) | (((uint32_t)wav_head_buff[x + 3]) << 0))
-#define LG_READ_WORD(x)	((((uint32_t)wav_head_buff[x + 3]) << 24) | (((uint32_t)wav_head_buff[x + 2]) << 16) |\
-			(((uint32_t)wav_head_buff[x + 1]) << 8) | (((uint32_t)wav_head_buff[x + 0]) << 0))
-#define LG_READ_HALF(x)	((((uint16_t)wav_head_buff[x + 1]) << 8) | (((uint16_t)wav_head_buff[x + 0]) << 0))
+#define BG_READ_WORD(x) ((((uint32_t)wav_head_buff[x + 0]) << 24) | (((uint32_t)wav_head_buff[x + 1]) << 16) |\
+            (((uint32_t)wav_head_buff[x + 2]) << 8) | (((uint32_t)wav_head_buff[x + 3]) << 0))
+#define LG_READ_WORD(x) ((((uint32_t)wav_head_buff[x + 3]) << 24) | (((uint32_t)wav_head_buff[x + 2]) << 16) |\
+            (((uint32_t)wav_head_buff[x + 1]) << 8) | (((uint32_t)wav_head_buff[x + 0]) << 0))
+#define LG_READ_HALF(x) ((((uint16_t)wav_head_buff[x + 1]) << 8) | (((uint16_t)wav_head_buff[x + 0]) << 0))
 
 static volatile pwm_play_info_t pwm_play_info;
-static volatile wav_info_t wav_info;
 
 static void pwm_play_disable(timer_device_number_t timer, timer_channel_number_t timer_channel, pwm_device_number_t pwm, pwm_channel_number_t pwm_channel)
 {
@@ -79,6 +78,7 @@ int pwm_play_wav(timer_device_number_t timer, timer_channel_number_t timer_chann
 {
     uint8_t *wav_head_buff = wav_ptr;
     uint32_t index;
+    wav_info_t wav_info;
 
     if(mode == 1)   /* force play */
     {
@@ -99,52 +99,52 @@ int pwm_play_wav(timer_device_number_t timer, timer_channel_number_t timer_chann
         while(__sync_lock_test_and_set(&pwm_play_info.status, 1));
     }
 
-	index = 0;
-	if (BG_READ_WORD(index) != RIFF_ID)
-		return UNVALID_RIFF_ID;
-	index += 4;
-	index += 4;
-	if (BG_READ_WORD(index) != WAVE_ID)
-		return UNVALID_WAVE_ID;
-	index += 4;
-	if (BG_READ_WORD(index) != FMT_ID)
-		return UNVALID_FMT_ID;
-	index += 4;
-	uint32_t v_fmt_size = LG_READ_WORD(index);
-	index += 4;
-	if (LG_READ_HALF(index) != 0x01)
-		return UNSUPPORETD_FORMATTAG;
-	index += 2;
+    index = 0;
+    if (BG_READ_WORD(index) != RIFF_ID)
+        return UNVALID_RIFF_ID;
+    index += 4;
+    index += 4;
+    if (BG_READ_WORD(index) != WAVE_ID)
+        return UNVALID_WAVE_ID;
+    index += 4;
+    if (BG_READ_WORD(index) != FMT_ID)
+        return UNVALID_FMT_ID;
+    index += 4;
+    uint32_t v_fmt_size = LG_READ_WORD(index);
+    index += 4;
+    if (LG_READ_HALF(index) != 0x01)
+        return UNSUPPORETD_FORMATTAG;
+    index += 2;
     wav_info.numchannels = LG_READ_HALF(index);
-	if (wav_info.numchannels != 1 && wav_info.numchannels != 2)
-		return UNSUPPORETD_NUMBER_OF_CHANNEL;
-	index += 2;
-	wav_info.samplerate = LG_READ_WORD(index);
-//	if (wav_info.samplerate != 16000 && wav_info.samplerate != 11025 && wav_info.samplerate != 22050 && wav_info.samplerate != 44100)
-//		return UNSUPPORETD_SAMPLE_RATE;
-	index += 4;
-	wav_info.byterate = LG_READ_WORD(index);
-	index += 4;
-	wav_info.blockalign = LG_READ_HALF(index);
-	index += 2;
-	wav_info.bitspersample = LG_READ_HALF(index);
-	if (wav_info.bitspersample != 8 && wav_info.bitspersample != 16 && wav_info.bitspersample != 24)
-		return UNSUPPORETD_BITS_PER_SAMPLE;
-	index += 2;
-	index = index - 16 + v_fmt_size;
-	if (BG_READ_WORD(index) == LIST_ID) {
-		index += 4;
-		index += LG_READ_WORD(index);
-		index += 4;
-		if (index >= 500)
-			return UNVALID_LIST_SIZE;
-	}
-	if (BG_READ_WORD(index) != DATA_ID)
-		return UNVALID_DATA_ID;
-	index += 4;
-	wav_info.datasize = LG_READ_WORD(index);
-	index += 4;
-	printf("numchannels:%d\n", wav_info.numchannels);
+    if (wav_info.numchannels != 1 && wav_info.numchannels != 2)
+        return UNSUPPORETD_NUMBER_OF_CHANNEL;
+    index += 2;
+    wav_info.samplerate = LG_READ_WORD(index);
+//  if (wav_info.samplerate != 16000 && wav_info.samplerate != 11025 && wav_info.samplerate != 22050 && wav_info.samplerate != 44100)
+//      return UNSUPPORETD_SAMPLE_RATE;
+    index += 4;
+    wav_info.byterate = LG_READ_WORD(index);
+    index += 4;
+    wav_info.blockalign = LG_READ_HALF(index);
+    index += 2;
+    wav_info.bitspersample = LG_READ_HALF(index);
+    if (wav_info.bitspersample != 8 && wav_info.bitspersample != 16 && wav_info.bitspersample != 24)
+        return UNSUPPORETD_BITS_PER_SAMPLE;
+    index += 2;
+    index = index - 16 + v_fmt_size;
+    if (BG_READ_WORD(index) == LIST_ID) {
+        index += 4;
+        index += LG_READ_WORD(index);
+        index += 4;
+        if (index >= 500)
+            return UNVALID_LIST_SIZE;
+    }
+    if (BG_READ_WORD(index) != DATA_ID)
+        return UNVALID_DATA_ID;
+    index += 4;
+    wav_info.datasize = LG_READ_WORD(index);
+    index += 4;
+    printf("numchannels:%d\n", wav_info.numchannels);
     printf("samplerate:%d\n", wav_info.samplerate);
     printf("byterate:%d\n", wav_info.byterate);
     printf("blockalign:%d\n", wav_info.blockalign);
