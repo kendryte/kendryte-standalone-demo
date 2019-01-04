@@ -20,8 +20,12 @@
 #include <sysctl.h>
 #include <fpioa.h>
 #include "pwm_play_audio.h"
-#include "test_wav.h"
 #include <unistd.h>
+
+//#include "test_wav.h"
+//#include "test_8bit_wav.h"
+//#include "test_16bit_wav.h"
+#include "test_24bit_wav.h"
 
 #define TIMER_NOR   0
 #define TIMER_CHN   0

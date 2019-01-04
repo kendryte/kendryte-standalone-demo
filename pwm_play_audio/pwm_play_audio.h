@@ -19,7 +19,7 @@ typedef struct _pwm_play_info_t
     uint32_t cur_cnt;
     uint16_t bitspersample;       /* bits 8 or 16 or 24 */
     uint16_t numchannels;         /* 1:, 2: */
-    void *data;                   /* audio data */
+    uint8_t *data;                   /* audio data */
     double pwm_freq;              /* pwm freq */
     uint32_t status;              /* 0:idel, 1:busy */
 }pwm_play_info_t;

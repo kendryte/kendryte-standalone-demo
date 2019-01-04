@@ -2,6 +2,7 @@
 #include <timer.h>
 #include <pwm.h>
 #include <plic.h>
+#include <string.h>
 #include "pwm_play_audio.h"
 
 #define BG_READ_WORD(x)	((((uint32_t)wav_head_buff[x + 0]) << 24) | (((uint32_t)wav_head_buff[x + 1]) << 16) |\
@@ -35,13 +36,25 @@ static int timer_callback(void *ctx)
     double duty = 0.0;
     if(v_pwm_play_info->bitspersample == 16)
     {
-        int16_t v_idata = *(((int16_t *)v_pwm_play_info->data) + (v_pwm_play_info->numchannels * (v_pwm_play_info->cur_cnt)++));
-        uint16_t v_udata = v_idata + 32768;
-        duty = v_udata / 65536.0;
+        int16_t v_i16data = *(((int16_t *)v_pwm_play_info->data) + (v_pwm_play_info->numchannels * (v_pwm_play_info->cur_cnt)++));
+        uint16_t v_u16data = v_i16data + 32768;
+        duty = v_u16data / 65536.0;
     }
-    else
+    else if(v_pwm_play_info->bitspersample == 8)
     {
-        /*  */
+        uint8_t v_8data = *(v_pwm_play_info->data + (v_pwm_play_info->numchannels * (v_pwm_play_info->cur_cnt)++));
+        duty = v_8data / 256.0;
+    }
+    else  /* 24bit */
+    {
+        uint8_t v_data[4] = {0, 0, 0, 0};
+        memcpy(v_data, v_pwm_play_info->data + (v_pwm_play_info->numchannels * (3 * (v_pwm_play_info->cur_cnt)++)), 3);
+        if(v_data[2] & 0x80) /* sign expand */
+        {
+            v_data[3] = 0xFF;
+        }
+        uint32_t v_u32data = *((int32_t *)v_data) + 0x800000UL;
+        duty = (double)v_u32data / 0x1000000UL;
     }
 
     pwm_set_frequency(v_pwm_play_info->pwm, v_pwm_play_info->pwm_channel, v_pwm_play_info->pwm_freq, duty);
