@@ -54,6 +54,22 @@ enum errorcode_e {
 
 int pwm_play_init(timer_device_number_t timer, pwm_device_number_t pwm);
 
+/**
+ * @brief       Set pwm duty
+ *
+ * @param[in]   timer               timer
+ * @param[in]   timer_channel       timer channel
+ * @param[in]   pwm                 pwm
+ * @param[in]   pwm_channel         pwm channel
+
+ * @param[in]   wav_ptr             pcm data
+ * @param[in]   mode                0:block  1:force play  2:return right now
+ *
+ *
+ * @return      result
+ *     - 0      Success
+ *     - Other  Fail
+ */
 int pwm_play_wav(timer_device_number_t timer, timer_channel_number_t timer_channel, pwm_device_number_t pwm, pwm_channel_number_t pwm_channel, uint8_t *wav_ptr, uint8_t mode);
 
 #endif
