@@ -22,10 +22,11 @@
 #include "pwm_play_audio.h"
 #include <unistd.h>
 
-//#include "test_wav.h"
-//#include "test_8bit_wav.h"
-//#include "test_16bit_wav.h"
+#include "test_wav.h"
+#include "test_8bit_wav.h"
+#include "test_16bit_wav.h"
 #include "test_24bit_wav.h"
+#include "test_16bit_mono_wav.h"
 
 #define TIMER_NOR   0
 #define TIMER_CHN   0
@@ -46,6 +47,7 @@ int main(void)
     while(1)
     {
         pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_wav, 0);
+        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_16bit_mono_wav, 0);
 //        sleep(20);
     }
 }
