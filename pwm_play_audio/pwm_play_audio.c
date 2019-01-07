@@ -63,13 +63,12 @@ static int timer_callback(void *ctx)
 
 int pwm_play_init(timer_device_number_t timer, pwm_device_number_t pwm)
 {
-    if((uint32_t)timer == (uint32_t)pwm)
-        return -1;
-
     /* Init timer */
     timer_init(timer);
+
     /* Init PWM */
-    pwm_init(pwm);
+    if((uint32_t)timer != (uint32_t)pwm)
+        pwm_init(pwm);
 
     return 0;
 }
@@ -79,6 +78,11 @@ int pwm_play_wav(timer_device_number_t timer, timer_channel_number_t timer_chann
     uint8_t *wav_head_buff = wav_ptr;
     uint32_t index;
     wav_info_t wav_info;
+
+    if((uint32_t)timer == (uint32_t)pwm && (uint32_t)timer_channel == (uint32_t)pwm_channel)
+    {
+        return TIMER_PWM_CHANNEL_ERR;
+    }
 
     if(mode == 1)   /* force play */
     {

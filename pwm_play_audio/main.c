@@ -30,15 +30,15 @@
 #include "test_welcome.h"
 
 #define TIMER_NOR   0
-#define TIMER_CHN   0
-#define TIMER_PWM   1
+#define TIMER_CHN   1
+#define TIMER_PWM   0
 #define TIMER_PWM_CHN 0
 
 int main(void)
 {
     printf("PWM wav test\n");
     /* Init FPIOA pin mapping for PWM*/
-    fpioa_set_function(24, FUNC_TIMER1_TOGGLE1);
+    fpioa_set_function(24, FUNC_TIMER0_TOGGLE1);
     /* Init Platform-Level Interrupt Controller(PLIC) */
     plic_init();
     /* Enable global interrupt for machine mode of RISC-V */
@@ -47,13 +47,12 @@ int main(void)
     pwm_play_init(TIMER_NOR, TIMER_PWM);
     while(1)
     {
-//        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_wav, 0);
+        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_wav, 0);
 //        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_8bit_wav, 0);
-        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_16bit_mono_wav, 0);
+//        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_16bit_mono_wav, 0);
 //        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_16bit_wav, 0);
 //        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_24bit_wav, 0);
-        sleep(2);
-        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_welcome_wav, 1);
-
+//        sleep(2);
+//        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_welcome_wav, 1);
     }
 }

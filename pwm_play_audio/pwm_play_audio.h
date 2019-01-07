@@ -49,7 +49,7 @@ enum errorcode_e {
     UNSUPPORETD_BITS_PER_SAMPLE,
     UNVALID_LIST_SIZE,
     UNVALID_DATA_ID,
-
+    TIMER_PWM_CHANNEL_ERR,
 };
 
 int pwm_play_init(timer_device_number_t timer, pwm_device_number_t pwm);
