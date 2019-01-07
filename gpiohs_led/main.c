@@ -42,6 +42,7 @@ int irq_gpiohs2(void* ctx)
         gpiohs_set_pin(GPIO_LED, GPIO_PV_LOW);
     else
         gpiohs_set_pin(GPIO_LED, GPIO_PV_HIGH);
+    return 0;
 }
 
 int main(void)
