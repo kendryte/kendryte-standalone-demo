@@ -21,6 +21,12 @@
 #include <fpioa.h>
 #include "pwm_play_audio.h"
 #include <unistd.h>
+#include <stdlib.h>
+
+#include "minimp3.h"
+
+#include "test_mono_mp3.h"
+#include "test_stereo_mp3.h"
 
 #include "test_wav.h"
 #include "test_8bit_wav.h"
@@ -45,14 +51,25 @@ int main(void)
     sysctl_enable_irq();
 
     pwm_play_init(TIMER_NOR, TIMER_PWM);
+
+    uint8_t *wav_mono = malloc(10 * sizeof(test_mono_mp3));
+    mp3_to_wav(test_mono_mp3, sizeof(test_mono_mp3), wav_mono, 10 * sizeof(test_mono_mp3));
+
+    uint8_t *wav_stereo = malloc(20 * sizeof(test_stereo_mp3));
+    mp3_to_wav(test_stereo_mp3, sizeof(test_stereo_mp3), wav_stereo, 20 * sizeof(test_stereo_mp3));
+
     while(1)
     {
-        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_wav, 0);
+        printf("Play mp3 mono\n");
+        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, wav_mono, 0);
+        printf("Play mp3 stereo\n");
+        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, wav_stereo, 0);
+//        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_wav, 0);
 //        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_8bit_wav, 0);
 //        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_16bit_mono_wav, 0);
 //        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_16bit_wav, 0);
 //        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_24bit_wav, 0);
 //        sleep(2);
-//        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_welcome_wav, 1);
+        pwm_play_wav(TIMER_NOR, TIMER_CHN, TIMER_PWM, TIMER_PWM_CHN, test_welcome_wav, 0);
     }
 }
