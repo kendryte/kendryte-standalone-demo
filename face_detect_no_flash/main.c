@@ -182,7 +182,7 @@ int main(void)
     dvp_set_output_enable(0, 1);
     dvp_set_output_enable(1, 1);
     dvp_set_image_format(DVP_CFG_RGB_FORMAT);
-s    dvp_set_image_size(320, 240);
+    dvp_set_image_size(320, 240);
     ov2640_init();
     #endif
 
