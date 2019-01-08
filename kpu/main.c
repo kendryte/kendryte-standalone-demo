@@ -22,8 +22,7 @@
 #include "gencode_output.h"
 
 #define PLL0_OUTPUT_FREQ 800000000UL
-#define PLL1_OUTPUT_FREQ 300000000UL
-#define PLL2_OUTPUT_FREQ 45158400UL
+#define PLL1_OUTPUT_FREQ 400000000UL
 
 #define CLASS_NUMBER 20
 
@@ -87,6 +86,7 @@ static void io_mux_init(void)
     fpioa_set_function(38, FUNC_GPIOHS0 + DCX_GPIONUM);
     fpioa_set_function(36, FUNC_SPI0_SS3);
     fpioa_set_function(39, FUNC_SPI0_SCLK);
+    fpioa_set_function(37, FUNC_GPIOHS0 + RST_GPIONUM);
 
     sysctl_set_spi0_dvp_data(1);
 }
@@ -201,39 +201,11 @@ static void drawboxes(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32
 #endif
 }
 
-void image_rgb888_to_rgb565(uint8_t *src_image, uint16_t *dest_image, uint32_t width, uint32_t height)
-{
-    uint8_t *v_src_r = src_image;
-    uint8_t *v_src_g = src_image + width * height;
-    uint8_t *v_src_b = src_image + width * height * 2;
-    uint32_t i;
-    for(i = 0; i < width * height; i++)
-    {
-        uint16_t B = (v_src_b[i] >> 3) & 0x001F;
-        uint16_t G = ((v_src_g[i] >> 2) << 5) & 0x07E0;
-        uint16_t R = ((v_src_r[i] >> 3) << 11) & 0xF800;
-        dest_image[i] = (R | G | B);
-    }
-}
-
-void image_swap(uint16_t *image, uint32_t width, uint32_t heigt)
-{
-    uint32_t i;
-    uint16_t v_tmp;
-    for(i = 0; i < width * heigt / 2; i++)
-    {
-        v_tmp = image[2 * i];
-        image[2 * i] = image[2 * i + 1];
-        image[2 * i + 1] = v_tmp;
-    }
-}
-
 int main(void)
 {
     /* Set CPU and dvp clk */
     sysctl_pll_set_freq(SYSCTL_PLL0, PLL0_OUTPUT_FREQ);
     sysctl_pll_set_freq(SYSCTL_PLL1, PLL1_OUTPUT_FREQ);
-    sysctl_pll_set_freq(SYSCTL_PLL2, PLL2_OUTPUT_FREQ);
     uarths_init();
 
     io_mux_init();
