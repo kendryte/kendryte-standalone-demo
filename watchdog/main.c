@@ -35,7 +35,7 @@ int main(void)
     int timeout = 0;
     plic_init();
     sysctl_enable_irq();
-    printf("wdt time is %ld ms\n", wdt_init(0, 2000, wdt0_irq,NULL));
+    printf("wdt time is %d ms\n", wdt_init(0, 2000, wdt0_irq,NULL));
     while(1)
     {
         sleep(1);
