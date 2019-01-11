@@ -68,7 +68,7 @@ void* model_init(uint32_t addr)
         return layer_arg_ptr;
 }
 
-int kpu_task_init(kpu_task_t* task)
+int kpu_mode_task_init(kpu_task_t* task)
 {
         task->layers = model_init(0x00800000);
 	if (task->layers == NULL)

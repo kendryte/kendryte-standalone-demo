@@ -281,9 +281,9 @@ int main(void)
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
         /* init ai cnn */
-    kpu_task_init(&task);
+    kpu_mode_task_init(&task);
     printf("KPU TASK INIT, FREE MEM: %ld\n", get_free_heap_size());
-    region_layer_init(&task, 320, 240, 0.8, 0.2, ANCHOR_NUM, g_anchor);
+    region_layer_init(&task, 320, 240, 0.5, 0.2, ANCHOR_NUM, g_anchor);
     printf("REGION LAYER INIT, FREE MEM: %ld\n", get_free_heap_size());
     /* get kpu output result buf */
     uint8_t *kpu_outbuf = kpu_get_output_buf(&task);

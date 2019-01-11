@@ -37,7 +37,7 @@ typedef struct {
 } layer_config_t;
 
 void* model_init(uint32_t addr);
-int kpu_task_init(kpu_task_t* task);
+int kpu_mode_task_init(kpu_task_t* task);
 
 #endif /* _MODEL_H */
 
