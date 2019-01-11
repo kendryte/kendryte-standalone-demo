@@ -23,7 +23,6 @@
 #include "w25qxx.h"
 
 #define KMODEL_SIZE (380 * 1024)
-kpu_model_layer_metadata_t *meta;
 uint8_t model_data[KMODEL_SIZE];
 
 #define PLL0_OUTPUT_FREQ 800000000UL
@@ -218,7 +217,7 @@ int main(void)
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
 /* init face detect model */
-    kpu_model_load_from_buffer(&task, model_data, &meta);
+    kpu_model_load_from_buffer(&task, model_data, NULL);
     task.src = g_ai_buf;
     task.dma_ch = 5;
     task.callback = ai_done;
