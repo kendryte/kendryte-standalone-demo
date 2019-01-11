@@ -35,13 +35,14 @@ int main(void)
     int timeout = 0;
     plic_init();
     sysctl_enable_irq();
-    wdt_start(0, 2000, wdt0_irq);
+    printf("wdt time is %ld ms\n", wdt_init(0, 2000, wdt0_irq,NULL));
     while(1)
     {
-        timeout ++;
-        if(timeout < 6)
-            wdt_feed(0);
         sleep(1);
+        if(timeout++ < 5)
+        {
+            wdt_feed(0);
+        }
     }
 }
 
