@@ -29,9 +29,5 @@ typedef struct
 
 int image_init(image_t *image);
 void image_deinit(image_t *image);
-void image_crop(image_t *image_src, image_t *image_dst, uint16_t x_offset, uint16_t y_offset);
-void image_resize(image_t *image_src, image_t *image_dst);
-void image_umeyama(double *src, double *dst);
-void image_similarity(image_t *image_src, image_t *image_dst, double *T);
 
 #endif /* _IMAGE_PROCESS_H */
