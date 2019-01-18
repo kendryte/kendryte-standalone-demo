@@ -4,16 +4,49 @@
 #include <stdint.h>
 #include "kpu.h"
 
-#ifdef DEBUG_FLOAT
-#define INPUT_TYPE float
-#else
-#define INPUT_TYPE uint8_t
-#endif
+typedef struct
+{
+    uint32_t obj_number;
+    struct
+    {
+        uint32_t x1;
+        uint32_t y1;
+        uint32_t x2;
+        uint32_t y2;
+        uint32_t class_id;
+        float prob;
+    } obj[10];
+} obj_info_t;
 
-typedef void (*callback_draw_box)(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t class, float prob);
-void region_layer_cal(INPUT_TYPE *u8in);
-void region_layer_draw_boxes(callback_draw_box callback);
-int region_layer_init(kpu_task_t *task,uint32_t display_width, uint32_t display_hight, float layer_thresh, float layer_nms, uint32_t anchor_num, float *anchor_ptr);
-void set_coords_n(uint32_t v_coords, uint32_t v_anchor);
+typedef struct
+{
+    float threshold;
+    float nms_value;
+    uint32_t coords;
+    uint32_t anchor_number;
+    float *anchor;
+    uint32_t image_width;
+    uint32_t image_height;
+    uint32_t classes;
+    uint32_t net_width;
+    uint32_t net_height;
+    uint32_t layer_width;
+    uint32_t layer_height;
+    uint32_t boxes_number;
+    uint32_t output_number;
+    float scale;
+    float bias;
+    void *boxes;
+    uint8_t *input;
+    float *output;
+    float *probs_buf;
+    float **probs;
+    float *activate;
+    float *softmax;
+} region_layer_t;
+
+int region_layer_init(region_layer_t *rl, kpu_task_t *task);
+void region_layer_deinit(region_layer_t *rl);
+void region_layer_run(region_layer_t *rl, obj_info_t *obj_info);
 
 #endif // _REGION_LAYER
