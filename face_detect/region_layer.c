@@ -315,7 +315,7 @@ static void do_nms_sort(region_layer_t *rl, box_t *boxes, float **probs)
 {
     uint32_t boxes_number = rl->boxes_number;
     uint32_t classes = rl->classes;
-    uint32_t nms_value = rl->nms_value;
+    float nms_value = rl->nms_value;
     int i, j, k;
     sortable_box_t s[boxes_number];
 

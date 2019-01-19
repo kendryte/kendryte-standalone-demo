@@ -237,7 +237,12 @@ int main(void)
     plic_irq_register(IRQN_DVP_INTERRUPT, dvp_irq, NULL);
     plic_irq_enable(IRQN_DVP_INTERRUPT);
     /* init face detect model */
-    model_init(&face_detect_task, 8 * 1024 * 1024);
+    if (model_init(&face_detect_task, 8 * 1024 * 1024) != 0)
+    {
+        model_deinit(&face_detect_task);
+        printf("\nmodel init error\n");
+        while (1);
+    }
     face_detect_task.src = kpu_image.addr;
     face_detect_task.dma_ch = 5;
     face_detect_task.callback = ai_done;
