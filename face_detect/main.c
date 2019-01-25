@@ -37,7 +37,7 @@ static obj_info_t face_detect_info;
 static float anchor[ANCHOR_NUM * 2] = {1.889,2.5245,  2.9465,3.94056, 3.99987,5.3658, 5.155437,6.92275, 6.718375,9.01025};
 
 
-static void ai_done(void)
+static void ai_done(void *ctx)
 {
     g_ai_done_flag = 1;
 }
@@ -246,7 +246,7 @@ int main(void)
     face_detect_task.src = kpu_image.addr;
     face_detect_task.dma_ch = 5;
     face_detect_task.callback = ai_done;
-    kpu_task_init(&face_detect_task);
+    kpu_single_task_init(&face_detect_task);
     face_detect_rl.anchor_number = ANCHOR_NUM;
     face_detect_rl.anchor = anchor;
     face_detect_rl.threshold = 0.7;
@@ -265,7 +265,7 @@ int main(void)
             ;
         /* run face detect */
         g_ai_done_flag = 0;
-        kpu_run(&face_detect_task);
+        kpu_run(&face_detect_task, DMAC_CHANNEL5, NULL, NULL, ai_done);
         while(!g_ai_done_flag);
         region_layer_run(&face_detect_rl, &face_detect_info);
         /* run key point detect */
