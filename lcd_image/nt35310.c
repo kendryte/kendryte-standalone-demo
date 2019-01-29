@@ -15,10 +15,6 @@
 #include "nt35310.h"
 #include "gpiohs.h"
 #include "spi.h"
-<<<<<<< HEAD:face_detect/nt35310.c
-#include "unistd.h"
-=======
->>>>>>> remotes/origin/v0.5.3rc:lcd_image/nt35310.c
 #include "board_config.h"
 
 static void  init_dcx(void)
@@ -36,32 +32,16 @@ static void set_dcx_data(void)
 {
     gpiohs_set_pin(DCX_GPIONUM, GPIO_PV_HIGH);
 }
-#if BOARD_LICHEEDAN
-static void init_rst(void)
-{
-    gpiohs_set_drive_mode(RST_GPIONUM, GPIO_DM_OUTPUT);
-    gpiohs_set_pin(RST_GPIONUM, GPIO_PV_LOW);
-    usleep(100000);
-    gpiohs_set_pin(RST_GPIONUM, GPIO_PV_HIGH);
-    usleep(100000);
-}
-#endif
+
 void tft_hard_init(void)
 {
     init_dcx();
-#if BOARD_LICHEEDAN
-    init_rst();
-#endif
     spi_init(SPI_CHANNEL, SPI_WORK_MODE_0, SPI_FF_OCTAL, 8, 0);
-<<<<<<< HEAD:face_detect/nt35310.c
-    spi_set_clk_rate(SPI_CHANNEL, 20000000);
-=======
 #if BOARD_LICHEEDAN
     spi_set_clk_rate(SPI_CHANNEL, 1000000);
 #else
     spi_set_clk_rate(SPI_CHANNEL, 25000000);
 #endif
->>>>>>> remotes/origin/v0.5.3rc:lcd_image/nt35310.c
 }
 
 void tft_write_command(uint8_t cmd)
