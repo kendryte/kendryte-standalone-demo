@@ -5,7 +5,13 @@
 #include "dvp.h"
 #include "fpioa.h"
 #include "lcd.h"
+#include "board_config.h"
+#if OV5640
 #include "ov5640.h"
+#endif
+#if OV2640
+#include "ov2640.h"
+#endif
 #include "plic.h"
 #include "sysctl.h"
 #include "uarths.h"
@@ -13,14 +19,15 @@
 #include "utils.h"
 #include "kpu.h"
 #include "region_layer.h"
+#include "gencode_output.h"
 
-#define PLL0_OUTPUT_FREQ 1000000000UL
-#define PLL1_OUTPUT_FREQ 300000000UL
-#define PLL2_OUTPUT_FREQ 45158400UL
+#define PLL0_OUTPUT_FREQ 800000000UL
+#define PLL1_OUTPUT_FREQ 400000000UL
 
 #define CLASS_NUMBER 20
 
 kpu_task_t task;
+static region_layer_t detect_rl;
 
 volatile uint8_t g_ai_done_flag;
 
@@ -62,6 +69,36 @@ static int on_irq_dvp(void* ctx)
     return 0;
 }
 
+#if BOARD_LICHEEDAN
+static void io_mux_init(void)
+{
+    /* Init DVP IO map and function settings */
+    fpioa_set_function(42, FUNC_CMOS_RST);
+    fpioa_set_function(44, FUNC_CMOS_PWDN);
+    fpioa_set_function(46, FUNC_CMOS_XCLK);
+    fpioa_set_function(43, FUNC_CMOS_VSYNC);
+    fpioa_set_function(45, FUNC_CMOS_HREF);
+    fpioa_set_function(47, FUNC_CMOS_PCLK);
+    fpioa_set_function(41, FUNC_SCCB_SCLK);
+    fpioa_set_function(40, FUNC_SCCB_SDA);
+
+    /* Init SPI IO map and function settings */
+    fpioa_set_function(38, FUNC_GPIOHS0 + DCX_GPIONUM);
+    fpioa_set_function(36, FUNC_SPI0_SS3);
+    fpioa_set_function(39, FUNC_SPI0_SCLK);
+    fpioa_set_function(37, FUNC_GPIOHS0 + RST_GPIONUM);
+
+    sysctl_set_spi0_dvp_data(1);
+}
+
+static void io_set_power(void)
+{
+    /* Set dvp and spi pin to 1.8V */
+    sysctl_set_power_mode(SYSCTL_POWER_BANK6, SYSCTL_POWER_V18);
+    sysctl_set_power_mode(SYSCTL_POWER_BANK7, SYSCTL_POWER_V18);
+}
+
+#else
 static void io_mux_init(void)
 {
     /* Init DVP IO map and function settings */
@@ -88,6 +125,7 @@ static void io_set_power(void)
     sysctl_set_power_mode(SYSCTL_POWER_BANK1, SYSCTL_POWER_V18);
     sysctl_set_power_mode(SYSCTL_POWER_BANK2, SYSCTL_POWER_V18);
 }
+#endif
 
 #if (CLASS_NUMBER > 1)
 typedef struct
@@ -168,8 +206,6 @@ int main(void)
     /* Set CPU and dvp clk */
     sysctl_pll_set_freq(SYSCTL_PLL0, PLL0_OUTPUT_FREQ);
     sysctl_pll_set_freq(SYSCTL_PLL1, PLL1_OUTPUT_FREQ);
-    sysctl_pll_set_freq(SYSCTL_PLL2, PLL2_OUTPUT_FREQ);
-    sysctl_clock_enable(SYSCTL_CLOCK_AI);
     uarths_init();
 
     io_mux_init();
@@ -181,20 +217,37 @@ int main(void)
     /* LCD init */
     printf("LCD init\n");
     lcd_init();
+#if BOARD_LICHEEDAN
+    lcd_set_direction(DIR_YX_RLDU);
+#else
+    lcd_set_direction(DIR_YX_RLUD);
+#endif
     lcd_clear(BLACK);
     lcd_draw_string(136, 70, "DEMO 1", WHITE);
     lcd_draw_string(104, 150, "20 class detection", WHITE);
-
     /* DVP init */
     printf("DVP init\n");
 
+    #if OV5640
     dvp_init(16);
+    dvp_set_xclk_rate(50000000);
     dvp_enable_burst();
     dvp_set_output_enable(0, 1);
     dvp_set_output_enable(1, 1);
     dvp_set_image_format(DVP_CFG_RGB_FORMAT);
     dvp_set_image_size(320, 240);
     ov5640_init();
+    #else
+    dvp_init(8);
+    dvp_set_xclk_rate(24000000);
+    dvp_enable_burst();
+    dvp_set_output_enable(0, 1);
+    dvp_set_output_enable(1, 1);
+    dvp_set_image_format(DVP_CFG_RGB_FORMAT);
+//    dvp_set_image_format(DVP_CFG_YUV_FORMAT);
+    dvp_set_image_size(320, 240);
+    ov2640_init();
+    #endif
 
     dvp_set_ai_addr((uint32_t)g_ai_buf, (uint32_t)(g_ai_buf + 320 * 240), (uint32_t)(g_ai_buf + 320 * 240 * 2));
     dvp_set_display_addr((uint32_t)g_lcd_gram0);
@@ -217,12 +270,19 @@ int main(void)
     dvp_clear_interrupt(DVP_STS_FRAME_START | DVP_STS_FRAME_FINISH);
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
-    /* init kpu task*/
-    kpu_task_init(&task);
-    /* init region layer */
-    region_layer_init(&task,320, 240, 0.5, 0.2, ANCHOR_NUM, g_anchor);
-    /* get kpu output result buf */
-    uint8_t *kpu_outbuf = kpu_get_output_buf(&task);
+    /* init kpu */
+    kpu_task_gencode_output_init(&task);
+    task.src = g_ai_buf;
+    task.dma_ch = 5;
+    task.callback = ai_done;
+    kpu_single_task_init(&task);
+
+    detect_rl.anchor_number = ANCHOR_NUM;
+    detect_rl.anchor = g_anchor;
+    detect_rl.threshold = 0.7;
+    detect_rl.nms_value = 0.3;
+    region_layer_init(&detect_rl, &task);
+
     while (1)
     {
         /* dvp finish*/
@@ -230,13 +290,12 @@ int main(void)
             ;
 
         /* start to calculate */
-        kpu_run(&task, DMAC_CHANNEL5, g_ai_buf, kpu_outbuf, ai_done);
-
+        kpu_start(&task);
         while(!g_ai_done_flag);
         g_ai_done_flag = 0;
 
         /* start region layer */
-        region_layer_cal((uint8_t *)kpu_outbuf);
+        region_layer_run(&detect_rl, NULL);
 
         /* display pic*/
         g_ram_mux ^= 0x01;
@@ -244,7 +303,7 @@ int main(void)
         g_dvp_finish_flag = 0;
 
         /* draw boxs */
-        region_layer_draw_boxes(drawboxes);
+        region_layer_draw_boxes(&detect_rl, drawboxes);
     }
 
     return 0;

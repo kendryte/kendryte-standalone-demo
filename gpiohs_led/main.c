@@ -19,7 +19,7 @@
 #include "gpiohs.h"
 #include "sysctl.h"
 
-int irq_flag = 1;
+uint32_t irq_flag;
 
 #define PIN_LED 25
 #define PIN_KEY 26
@@ -27,16 +27,22 @@ int irq_flag = 1;
 #define GPIO_LED 3
 #define GPIO_KEY 2
 
-void irq_gpiohs2(void* gp)
+uint32_t g_count;
+
+int irq_gpiohs2(void* ctx)
 {
     irq_flag = gpiohs_get_pin(GPIO_KEY);
 
     printf("IRQ The PIN is %d\n", irq_flag);
 
-    if (irq_flag)
+    uint32_t *tmp = (uint32_t *)(ctx);
+    printf("count is %d\n", (*tmp)++);
+
+    if (!irq_flag)
         gpiohs_set_pin(GPIO_LED, GPIO_PV_LOW);
     else
         gpiohs_set_pin(GPIO_LED, GPIO_PV_HIGH);
+    return 0;
 }
 
 int main(void)
@@ -50,17 +56,10 @@ int main(void)
     gpiohs_set_pin(GPIO_LED, value);
 
     fpioa_set_function(PIN_KEY, FUNC_GPIOHS2);
-    gpiohs_set_drive_mode(GPIO_KEY, GPIO_DM_INPUT);
+    gpiohs_set_drive_mode(GPIO_KEY, GPIO_DM_INPUT_PULL_UP);
     gpiohs_set_pin_edge(GPIO_KEY, GPIO_PE_BOTH);
-    gpiohs_set_irq(GPIO_KEY, 1, irq_gpiohs2);
 
-    while (1)
-    {
-        sleep(1);
-        if (irq_flag)
-            gpiohs_set_pin(GPIO_LED, value = !value);
-        int val = gpiohs_get_pin(GPIO_KEY);
-        printf("The PIN is %d\n", val);
-    }
-    return 0;
+    gpiohs_irq_register(GPIO_KEY, 1, irq_gpiohs2, &g_count);
+
+    while (1);
 }
