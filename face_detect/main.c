@@ -203,6 +203,7 @@ int main(void)
     printf("DVP init\n");
     #if OV5640
     dvp_init(16);
+    dvp_set_xclk_rate(12000000);
     dvp_enable_burst();
     dvp_set_output_enable(0, 1);
     dvp_set_output_enable(1, 1);
@@ -265,7 +266,8 @@ int main(void)
             ;
         /* run face detect */
         g_ai_done_flag = 0;
-        kpu_run(&face_detect_task, DMAC_CHANNEL5, NULL, NULL, ai_done);
+//        kpu_run(&face_detect_task, DMAC_CHANNEL5, NULL, NULL, ai_done);
+        kpu_start(&face_detect_task);
         while(!g_ai_done_flag);
         region_layer_run(&face_detect_rl, &face_detect_info);
         /* run key point detect */
