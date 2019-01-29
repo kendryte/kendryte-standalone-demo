@@ -218,7 +218,7 @@ int main(void)
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
     /* init kpu task*/
-    kpu_single_task_init(&task);
+    kpu_task_init(&task);
     /* init region layer */
     region_layer_init(&task,320, 240, 0.5, 0.2, ANCHOR_NUM, g_anchor);
     /* get kpu output result buf */
