@@ -36,6 +36,16 @@
 
 uint8_t ov5640_init(void);
 void ov5640_flash_lamp(uint8_t sw);
+void OV5640_Brightness(uint8_t bright);
+void OV5640_Exposure(uint8_t exposure);
+void OV5640_Light_Mode(uint8_t mode);
+void OV5640_Color_Saturation(uint8_t sat);
+void OV5640_Brightness(uint8_t bright);
+void OV5640_Contrast(uint8_t contrast);
+void OV5640_Sharpness(uint8_t sharp);
+void OV5640_Special_Effects(uint8_t eft);
+uint8_t OV5640_Focus_Init(void);
+uint8_t OV5640_Auto_Focus(void);
 
 #endif
 

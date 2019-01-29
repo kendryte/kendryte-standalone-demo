@@ -17,6 +17,7 @@
 #include "lcd.h"
 #include "nt35310.h"
 #include "font.h"
+#include "board_config.h"
 
 static lcd_ctl_t lcd_ctl;
 
@@ -54,7 +55,9 @@ void lcd_init(void)
 
 void lcd_set_direction(lcd_dir_t dir)
 {
+#if !BOARD_LICHEEDAN
     dir |= 0x08;
+#endif
     lcd_ctl.dir = dir;
     if (dir & DIR_XY_MASK)
     {

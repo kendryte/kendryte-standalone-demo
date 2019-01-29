@@ -1,8 +1,23 @@
+/* Copyright 2018 Canaan Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <string.h>
 #include <unistd.h>
 #include "lcd.h"
 #include "nt35310.h"
 #include "font.h"
+#include "board_config.h"
 
 static lcd_ctl_t lcd_ctl;
 
@@ -31,9 +46,7 @@ void lcd_init(void)
     tft_write_command(PIXEL_FORMAT_SET);
     data = 0x55;
     tft_write_byte(&data, 1);
-//    lcd_set_direction(DIR_XY_LRUD);
-    lcd_set_direction(DIR_YX_RLUD);
-
+    lcd_set_direction(DIR_XY_LRUD);
 
     /*display on*/
     tft_write_command(DISPALY_ON);
@@ -42,7 +55,9 @@ void lcd_init(void)
 
 void lcd_set_direction(lcd_dir_t dir)
 {
+#if !BOARD_LICHEEDAN
     dir |= 0x08;
+#endif
     lcd_ctl.dir = dir;
     if (dir & DIR_XY_MASK)
     {
