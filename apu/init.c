@@ -2,53 +2,53 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <printf.h>
-#include "audio_bf.h"
+#include "apu.h"
 
 
 uint64_t dir_logic_count;
 uint64_t voc_logic_count;
 
-#if AUDIO_BF_FFT_ENABLE
-uint32_t AUDIO_BF_DIR_FFT_BUFFER[AUDIO_BF_DIR_CHANNEL_MAX]
-				[AUDIO_BF_DIR_CHANNEL_SIZE]
+#if APU_FFT_ENABLE
+uint32_t APU_DIR_FFT_BUFFER[APU_DIR_CHANNEL_MAX]
+				[APU_DIR_CHANNEL_SIZE]
 	__attribute__((aligned(128)));
-uint32_t AUDIO_BF_VOC_FFT_BUFFER[AUDIO_BF_VOC_CHANNEL_SIZE]
+uint32_t APU_VOC_FFT_BUFFER[APU_VOC_CHANNEL_SIZE]
 	__attribute__((aligned(128)));
 #else
-int16_t AUDIO_BF_DIR_BUFFER[AUDIO_BF_DIR_CHANNEL_MAX][AUDIO_BF_DIR_CHANNEL_SIZE]
+int16_t APU_DIR_BUFFER[APU_DIR_CHANNEL_MAX][APU_DIR_CHANNEL_SIZE]
 	__attribute__((aligned(128)));
-int16_t AUDIO_BF_VOC_BUFFER[AUDIO_BF_VOC_CHANNEL_SIZE]
+int16_t APU_VOC_BUFFER[APU_VOC_CHANNEL_SIZE]
 	__attribute__((aligned(128)));
 #endif
 
 
-int int_audio_bf(void *ctx)
+int int_apu(void *ctx)
 {
-	struct audio_bf_int_stat_t rdy_reg = audio_bf->bf_int_stat_reg;
+	struct apu_int_stat_t rdy_reg = apu->bf_int_stat_reg;
 
 	if (rdy_reg.dir_search_data_rdy) {
-		audio_bf_dir_clear_int_state();
+		apu_dir_clear_int_state();
 
-#if AUDIO_BF_FFT_ENABLE
+#if APU_FFT_ENABLE
 		static int ch;
 
 		ch = (ch + 1) % 16;
 		for (uint32_t i = 0; i < 512; i++) { //
-			uint32_t data = audio_bf->sobuf_dma_rdata;
+			uint32_t data = apu->sobuf_dma_rdata;
 
-			AUDIO_BF_DIR_FFT_BUFFER[ch][i] = data;
+			APU_DIR_FFT_BUFFER[ch][i] = data;
 		}
 		if (ch == 0) { //
 			dir_logic_count++;
 		}
 #else
-		for (uint32_t ch = 0; ch < AUDIO_BF_DIR_CHANNEL_MAX; ch++) {
+		for (uint32_t ch = 0; ch < APU_DIR_CHANNEL_MAX; ch++) {
 			for (uint32_t i = 0; i < 256; i++) { //
-				uint32_t data = audio_bf->sobuf_dma_rdata;
+				uint32_t data = apu->sobuf_dma_rdata;
 
-				AUDIO_BF_DIR_BUFFER[ch][i * 2 + 0] =
+				APU_DIR_BUFFER[ch][i * 2 + 0] =
 					data & 0xffff;
-				AUDIO_BF_DIR_BUFFER[ch][i * 2 + 1] =
+				APU_DIR_BUFFER[ch][i * 2 + 1] =
 					(data >> 16) & 0xffff;
 			}
 		}
@@ -56,20 +56,20 @@ int int_audio_bf(void *ctx)
 #endif
 
 	} else if (rdy_reg.voc_buf_data_rdy) {
-		audio_bf_voc_clear_int_state();
+		apu_voc_clear_int_state();
 
-#if AUDIO_BF_FFT_ENABLE
+#if APU_FFT_ENABLE
 		for (uint32_t i = 0; i < 512; i++) { //
-			uint32_t data = audio_bf->vobuf_dma_rdata;
+			uint32_t data = apu->vobuf_dma_rdata;
 
-			AUDIO_BF_VOC_FFT_BUFFER[i] = data;
+			APU_VOC_FFT_BUFFER[i] = data;
 		}
 #else
 		for (uint32_t i = 0; i < 256; i++) { //
-			uint32_t data = audio_bf->vobuf_dma_rdata;
+			uint32_t data = apu->vobuf_dma_rdata;
 
-			AUDIO_BF_VOC_BUFFER[i * 2 + 0] = data & 0xffff;
-			AUDIO_BF_VOC_BUFFER[i * 2 + 1] = (data >> 16) & 0xffff;
+			APU_VOC_BUFFER[i * 2 + 0] = data & 0xffff;
+			APU_VOC_BUFFER[i * 2 + 1] = (data >> 16) & 0xffff;
 		}
 #endif
 
@@ -80,28 +80,28 @@ int int_audio_bf(void *ctx)
 	return 0;
 }
 
-#if AUDIO_BF_DMA_ENABLE
-int int_audio_bf_dir_dma(void *ctx)
+#if APU_DMA_ENABLE
+int int_apu_dir_dma(void *ctx)
 {
 	uint64_t chx_intstatus =
-		dmac->channel[AUDIO_BF_DIR_DMA_CHANNEL].intstatus;
+		dmac->channel[APU_DIR_DMA_CHANNEL].intstatus;
 	if (chx_intstatus & 0x02) {
-		dmac_chanel_interrupt_clear(AUDIO_BF_DIR_DMA_CHANNEL);
+		dmac_chanel_interrupt_clear(APU_DIR_DMA_CHANNEL);
 
-#if AUDIO_BF_FFT_ENABLE
+#if APU_FFT_ENABLE
 		static int ch;
 
 		ch = (ch + 1) % 16;
-		dmac->channel[AUDIO_BF_DIR_DMA_CHANNEL].dar =
-			(uint64_t)AUDIO_BF_DIR_FFT_BUFFER[ch];
+		dmac->channel[APU_DIR_DMA_CHANNEL].dar =
+			(uint64_t)APU_DIR_FFT_BUFFER[ch];
 #else
-		dmac->channel[AUDIO_BF_DIR_DMA_CHANNEL].dar =
-			(uint64_t)AUDIO_BF_DIR_BUFFER;
+		dmac->channel[APU_DIR_DMA_CHANNEL].dar =
+			(uint64_t)APU_DIR_BUFFER;
 #endif
 
-		dmac->chen = 0x0101 << AUDIO_BF_DIR_DMA_CHANNEL;
+		dmac->chen = 0x0101 << APU_DIR_DMA_CHANNEL;
 
-#if AUDIO_BF_FFT_ENABLE
+#if APU_FFT_ENABLE
 		if (ch == 0) { //
 			dir_logic_count++;
 		}
@@ -114,29 +114,29 @@ int int_audio_bf_dir_dma(void *ctx)
 		       dmac->intstatus, dmac->com_intstatus);
 		printk("dir intstatus: %lx\n", chx_intstatus);
 
-		dmac_chanel_interrupt_clear(AUDIO_BF_DIR_DMA_CHANNEL);
+		dmac_chanel_interrupt_clear(APU_DIR_DMA_CHANNEL);
 	}
 	return 0;
 }
 
 
-int int_audio_bf_voc_dma(void *ctx)
+int int_apu_voc_dma(void *ctx)
 {
 	uint64_t chx_intstatus =
-		dmac->channel[AUDIO_BF_VOC_DMA_CHANNEL].intstatus;
+		dmac->channel[APU_VOC_DMA_CHANNEL].intstatus;
 
 	if (chx_intstatus & 0x02) {
-		dmac_chanel_interrupt_clear(AUDIO_BF_VOC_DMA_CHANNEL);
+		dmac_chanel_interrupt_clear(APU_VOC_DMA_CHANNEL);
 
-#if AUDIO_BF_FFT_ENABLE
-		dmac->channel[AUDIO_BF_VOC_DMA_CHANNEL].dar =
-			(uint64_t)AUDIO_BF_VOC_FFT_BUFFER;
+#if APU_FFT_ENABLE
+		dmac->channel[APU_VOC_DMA_CHANNEL].dar =
+			(uint64_t)APU_VOC_FFT_BUFFER;
 #else
-		dmac->channel[AUDIO_BF_VOC_DMA_CHANNEL].dar =
-			(uint64_t)AUDIO_BF_VOC_BUFFER;
+		dmac->channel[APU_VOC_DMA_CHANNEL].dar =
+			(uint64_t)APU_VOC_BUFFER;
 #endif
 
-		dmac->chen = 0x0101 << AUDIO_BF_VOC_DMA_CHANNEL;
+		dmac->chen = 0x0101 << APU_VOC_DMA_CHANNEL;
 
 
 		voc_logic_count++;
@@ -146,7 +146,7 @@ int int_audio_bf_voc_dma(void *ctx)
 		       dmac->intstatus, dmac->com_intstatus);
 		printk("voc intstatus: %lx\n", chx_intstatus);
 
-		dmac_chanel_interrupt_clear(AUDIO_BF_VOC_DMA_CHANNEL);
+		dmac_chanel_interrupt_clear(APU_VOC_DMA_CHANNEL);
 	}
 	return 0;
 }
@@ -233,38 +233,38 @@ void init_bf(void)
 	// 	{0, 3, 6, 7, 6, 2, 0, 4, },
 	// };
 
-	audio_bf_dir_set_prev_fir(fir_neg_one);
-	audio_bf_dir_set_post_fir(fir_neg_one);
-	audio_bf_voc_set_prev_fir(fir_neg_one);
-	audio_bf_voc_set_post_fir(fir_neg_one);
+	apu_dir_set_prev_fir(fir_neg_one);
+	apu_dir_set_post_fir(fir_neg_one);
+	apu_voc_set_prev_fir(fir_neg_one);
+	apu_voc_set_post_fir(fir_neg_one);
 
-	audio_bf_set_delay(3, 7, 1);
-	audio_bf_set_smpl_shift(AUDIO_BF_SMPL_SHIFT);
-	audio_bf_voc_set_saturation_limit(AUDIO_BF_SATURATION_VPOS_DEBUG,
-					  AUDIO_BF_SATURATION_VNEG_DEBUG);
-	audio_bf_set_audio_gain(AUDIO_BF_AUDIO_GAIN_TEST);
-	audio_bf_voc_set_direction(0);
-	audio_bf_set_channel_enabled(0x3f);
-	audio_bf_set_down_size(0, 0);
+	apu_set_delay(3, 7, 1);
+	apu_set_smpl_shift(APU_SMPL_SHIFT);
+	apu_voc_set_saturation_limit(APU_SATURATION_VPOS_DEBUG,
+					  APU_SATURATION_VNEG_DEBUG);
+	apu_set_audio_gain(APU_AUDIO_GAIN_TEST);
+	apu_voc_set_direction(0);
+	apu_set_channel_enabled(0x3f);
+	apu_set_down_size(0, 0);
 
-#if AUDIO_BF_FFT_ENABLE
-	audio_bf_set_fft_shift_factor(1, 0xaa);
+#if APU_FFT_ENABLE
+	apu_set_fft_shift_factor(1, 0xaa);
 #else
-	audio_bf_set_fft_shift_factor(0, 0);
+	apu_set_fft_shift_factor(0, 0);
 #endif
 
-	audio_bf_set_interrupt_mask(AUDIO_BF_DMA_ENABLE, AUDIO_BF_DMA_ENABLE);
-#if AUDIO_BF_DIR_ENABLE
-	audio_bf_dir_enable();
+	apu_set_interrupt_mask(APU_DMA_ENABLE, APU_DMA_ENABLE);
+#if APU_DIR_ENABLE
+	apu_dir_enable();
 #endif
-#if AUDIO_BF_VOC_ENABLE
-	audio_bf_voc_enable(1);
+#if APU_VOC_ENABLE
+	apu_voc_enable(1);
 #else
-	audio_bf_voc_enable(0);
+	apu_voc_enable(0);
 #endif
 }
 
-#if AUDIO_BF_DMA_ENABLE
+#if APU_DMA_ENABLE
 void init_dma(void)
 {
 	printk("%s\n", __func__);
@@ -276,9 +276,9 @@ void init_dma(void)
 	dmac_cfg.cfg.int_en = 1;
 	writeq(dmac_cfg.data, &dmac->cfg);
 
-	sysctl_dma_select(SYSCTL_DMA_CHANNEL_0 + AUDIO_BF_DIR_DMA_CHANNEL,
+	sysctl_dma_select(SYSCTL_DMA_CHANNEL_0 + APU_DIR_DMA_CHANNEL,
 			  SYSCTL_DMA_SELECT_I2S0_BF_DIR_REQ);
-	sysctl_dma_select(SYSCTL_DMA_CHANNEL_0 + AUDIO_BF_VOC_DMA_CHANNEL,
+	sysctl_dma_select(SYSCTL_DMA_CHANNEL_0 + APU_VOC_DMA_CHANNEL,
 			  SYSCTL_DMA_SELECT_I2S0_BF_VOICE_REQ);
 }
 #endif
@@ -333,19 +333,19 @@ void init_interrupt(void)
 	// bf
 	plic_set_priority(IRQN_I2S0_INTERRUPT, 4);
 	plic_irq_enable(IRQN_I2S0_INTERRUPT);
-	plic_irq_register(IRQN_I2S0_INTERRUPT, int_audio_bf, NULL);
+	plic_irq_register(IRQN_I2S0_INTERRUPT, int_apu, NULL);
 
-#if AUDIO_BF_DMA_ENABLE
+#if APU_DMA_ENABLE
 	// dma
-	plic_set_priority(IRQN_DMA0_INTERRUPT + AUDIO_BF_DIR_DMA_CHANNEL, 4);
-	plic_irq_register(IRQN_DMA0_INTERRUPT + AUDIO_BF_DIR_DMA_CHANNEL,
-			  int_audio_bf_dir_dma, NULL);
-	plic_irq_enable(IRQN_DMA0_INTERRUPT + AUDIO_BF_DIR_DMA_CHANNEL);
+	plic_set_priority(IRQN_DMA0_INTERRUPT + APU_DIR_DMA_CHANNEL, 4);
+	plic_irq_register(IRQN_DMA0_INTERRUPT + APU_DIR_DMA_CHANNEL,
+			  int_apu_dir_dma, NULL);
+	plic_irq_enable(IRQN_DMA0_INTERRUPT + APU_DIR_DMA_CHANNEL);
 	// dma
-	plic_set_priority(IRQN_DMA0_INTERRUPT + AUDIO_BF_VOC_DMA_CHANNEL, 4);
-	plic_irq_register(IRQN_DMA0_INTERRUPT + AUDIO_BF_VOC_DMA_CHANNEL,
-			  int_audio_bf_voc_dma, NULL);
-	plic_irq_enable(IRQN_DMA0_INTERRUPT + AUDIO_BF_VOC_DMA_CHANNEL);
+	plic_set_priority(IRQN_DMA0_INTERRUPT + APU_VOC_DMA_CHANNEL, 4);
+	plic_irq_register(IRQN_DMA0_INTERRUPT + APU_VOC_DMA_CHANNEL,
+			  int_apu_voc_dma, NULL);
+	plic_irq_enable(IRQN_DMA0_INTERRUPT + APU_VOC_DMA_CHANNEL);
 #endif
 }
 
@@ -363,26 +363,26 @@ void init_all(void)
 	init_i2s();
 	init_bf();
 
-	if (AUDIO_BF_DMA_ENABLE) {
-		#if AUDIO_BF_DMA_ENABLE
+	if (APU_DMA_ENABLE) {
+		#if APU_DMA_ENABLE
 		init_dma();
 		#endif
-#if AUDIO_BF_FFT_ENABLE
-		init_dma_ch(AUDIO_BF_DIR_DMA_CHANNEL,
-			    &audio_bf->sobuf_dma_rdata,
-			    AUDIO_BF_DIR_FFT_BUFFER[0], 512 * 4);
-		init_dma_ch(AUDIO_BF_VOC_DMA_CHANNEL,
-			    &audio_bf->vobuf_dma_rdata, AUDIO_BF_VOC_FFT_BUFFER,
+#if APU_FFT_ENABLE
+		init_dma_ch(APU_DIR_DMA_CHANNEL,
+			    &apu->sobuf_dma_rdata,
+			    APU_DIR_FFT_BUFFER[0], 512 * 4);
+		init_dma_ch(APU_VOC_DMA_CHANNEL,
+			    &apu->vobuf_dma_rdata, APU_VOC_FFT_BUFFER,
 			    512 * 4);
 #else
-		init_dma_ch(AUDIO_BF_DIR_DMA_CHANNEL,
-			    &audio_bf->sobuf_dma_rdata, AUDIO_BF_DIR_BUFFER,
+		init_dma_ch(APU_DIR_DMA_CHANNEL,
+			    &apu->sobuf_dma_rdata, APU_DIR_BUFFER,
 			    512 * 16 * 2);
-		init_dma_ch(AUDIO_BF_VOC_DMA_CHANNEL,
-			    &audio_bf->vobuf_dma_rdata, AUDIO_BF_VOC_BUFFER,
+		init_dma_ch(APU_VOC_DMA_CHANNEL,
+			    &apu->vobuf_dma_rdata, APU_VOC_BUFFER,
 			    512 * 2);
 #endif
 	}
 	init_ws2812b();
-	// audio_bf_print_setting();
+	// apu_print_setting();
 }

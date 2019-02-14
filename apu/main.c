@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <printf.h>
-#include "audio_bf.h"
+#include "apu.h"
 
 int count;
 int assert_state;
@@ -14,12 +14,12 @@ int dir_logic(void)
 	int32_t dir_max = 0;
 	uint16_t contex = 0;
 
-	for (size_t ch = 0; ch < AUDIO_BF_DIR_CHANNEL_MAX; ch++) { //
+	for (size_t ch = 0; ch < APU_DIR_CHANNEL_MAX; ch++) { //
 
-			for (size_t i = 0; i < AUDIO_BF_DIR_CHANNEL_SIZE; i++) { //
-				 dir_sum += (int32_t)AUDIO_BF_DIR_BUFFER[ch][i] * (int32_t)AUDIO_BF_DIR_BUFFER[ch][i];
+			for (size_t i = 0; i < APU_DIR_CHANNEL_SIZE; i++) { //
+				 dir_sum += (int32_t)APU_DIR_BUFFER[ch][i] * (int32_t)APU_DIR_BUFFER[ch][i];
 			}
-			dir_sum = dir_sum / AUDIO_BF_DIR_CHANNEL_SIZE;
+			dir_sum = dir_sum / APU_DIR_CHANNEL_SIZE;
 			if(dir_sum > dir_max){
 				dir_max = dir_sum;
 				contex = ch;
@@ -29,7 +29,7 @@ int dir_logic(void)
 		printf("   %d\n", contex);
 		printf("\n");
 
-	audio_bf_dir_enable();
+	apu_dir_enable();
 	return 0;
 }
 
