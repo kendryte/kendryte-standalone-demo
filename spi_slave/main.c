@@ -22,14 +22,14 @@
 
 void io_mux_init(void)
 {
-    fpioa_set_function(37, FUNC_SPI0_SCLK);
-    fpioa_set_function(36, FUNC_SPI0_SS0);
-    fpioa_set_function(39, FUNC_SPI0_D0);   //MOSI
+    fpioa_set_function(32, FUNC_SPI0_SCLK);
+    fpioa_set_function(34, FUNC_SPI0_SS0);
+    fpioa_set_function(36, FUNC_SPI0_D0);   //MOSI
     fpioa_set_function(38, FUNC_SPI0_D1);   //MISO
 
-    fpioa_set_function(33, FUNC_SPI_SLAVE_SS);
-    fpioa_set_function(34, FUNC_SPI_SLAVE_SCLK);
-    fpioa_set_function(35, FUNC_SPI_SLAVE_D0);
+    fpioa_set_function(33, FUNC_SPI_SLAVE_SCLK);
+    fpioa_set_function(35, FUNC_SPI_SLAVE_SS);
+    fpioa_set_function(37, FUNC_SPI_SLAVE_D0);
 }
 
 int main(void)

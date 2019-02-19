@@ -28,9 +28,9 @@ struct slave_info_t
     uint32_t reg_data[SLAVE_MAX_ADDR];
 };
 
-
 void spi_master_init(void);
 void spi_slave_init(void);
+
 void spi_write_reg(uint32_t reg, uint32_t data);
 uint32_t spi_read_reg(uint32_t reg);
 
