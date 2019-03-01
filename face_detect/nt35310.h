@@ -1,3 +1,17 @@
+/* Copyright 2018 Canaan Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #ifndef _NT35310_H_
 #define _NT35310_H_
 
@@ -6,7 +20,7 @@
 /* clang-format off */
 #define NO_OPERATION            0x00
 #define SOFTWARE_RESET          0x01
-//#define READ_ID                 0x04
+#define READ_ID                 0x04
 #define READ_STATUS             0x09
 #define READ_POWER_MODE         0x0A
 #define READ_MADCTL             0x0B
@@ -82,7 +96,7 @@
 #define INTERFACE_CTL           0xF6
 
 #define DCX_GPIONUM             (2)
-#define RST_GPIONUM             (0)
+#define RST_GPIONUM             (3)
 
 #define SPI_CHANNEL             0
 #define SPI_SLAVE_SELECT        3
