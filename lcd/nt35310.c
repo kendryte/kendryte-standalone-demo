@@ -15,6 +15,7 @@
 #include "nt35310.h"
 #include "gpiohs.h"
 #include "spi.h"
+#include "unistd.h"
 #include "board_config.h"
 
 static void  init_dcx(void)
@@ -33,11 +34,23 @@ static void set_dcx_data(void)
     gpiohs_set_pin(DCX_GPIONUM, GPIO_PV_HIGH);
 }
 
+#if BOARD_LICHEEDAN
+static void init_rst(void)
+{
+    gpiohs_set_drive_mode(RST_GPIONUM, GPIO_DM_OUTPUT);
+    gpiohs_set_pin(RST_GPIONUM, GPIO_PV_LOW);
+    usleep(100000);
+    gpiohs_set_pin(RST_GPIONUM, GPIO_PV_HIGH);
+    usleep(100000);
+}
+#endif
+
 void tft_hard_init(void)
 {
     init_dcx();
     spi_init(SPI_CHANNEL, SPI_WORK_MODE_0, SPI_FF_OCTAL, 8, 0);
 #if BOARD_LICHEEDAN
+    init_rst();
     spi_set_clk_rate(SPI_CHANNEL, 20000000);
 #else
     spi_set_clk_rate(SPI_CHANNEL, 25000000);

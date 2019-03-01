@@ -20,6 +20,7 @@
 #include "image_process.h"
 #include "board_config.h"
 #include "w25qxx.h"
+#include "nt35310.h"
 
 
 #define PLL0_OUTPUT_FREQ 800000000UL
@@ -75,6 +76,7 @@ static void io_mux_init(void)
     fpioa_set_function(38, FUNC_GPIOHS0 + DCX_GPIONUM);
     fpioa_set_function(36, FUNC_SPI0_SS3);
     fpioa_set_function(39, FUNC_SPI0_SCLK);
+    fpioa_set_function(37, FUNC_GPIOHS0 + RST_GPIONUM);
 
     sysctl_set_spi0_dvp_data(1);
 #else
