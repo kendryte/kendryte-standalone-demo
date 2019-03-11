@@ -26,6 +26,20 @@ uint32_t rx_buf[1024];
 uint32_t g_index;
 uint32_t g_tx_len;
 
+#define MAIXGO  0
+
+#ifdef MAIXGO
+void io_mux_init(){
+
+    fpioa_set_function(20, FUNC_I2S0_IN_D0);
+    fpioa_set_function(19, FUNC_I2S0_WS);
+    fpioa_set_function(18, FUNC_I2S0_SCLK);
+
+    fpioa_set_function(34, FUNC_I2S2_OUT_D1);
+    fpioa_set_function(35, FUNC_I2S2_SCLK);
+    fpioa_set_function(33, FUNC_I2S2_WS);
+}
+#else
 void io_mux_init(){
 
     fpioa_set_function(36, FUNC_I2S0_IN_D0);
@@ -36,6 +50,7 @@ void io_mux_init(){
     fpioa_set_function(35, FUNC_I2S2_SCLK);
     fpioa_set_function(34, FUNC_I2S2_WS);
 }
+#endif
 
 int main(void)
 {
