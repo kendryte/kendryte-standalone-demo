@@ -39,7 +39,7 @@ int spi_slave_init(uint8_t *data, uint32_t len)
     fpioa_set_function(SPI_SLAVE_MOSI_PIN, FUNC_SPI_SLAVE_D0);
     fpioa_set_function(SPI_SLAVE_INT_PIN, FUNC_GPIOHS0 + SPI_SLAVE_INT_IO);
     fpioa_set_function(SPI_SLAVE_READY_PIN, FUNC_GPIOHS0 + SPI_SLAVE_READY_IO);
-    spi_slave_config(SPI_SLAVE_INT_IO, SPI_SLAVE_READY_IO, DMAC_CHANNEL5, 32, data, len, spi_slave_receive_hook);
+    spi_slave_config(SPI_SLAVE_INT_IO, SPI_SLAVE_READY_IO, DMAC_CHANNEL5, 8, data, len, spi_slave_receive_hook);
 
     return 0;
 }
