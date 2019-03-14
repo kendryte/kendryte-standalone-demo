@@ -51,6 +51,7 @@ script:
 - |
   mv $TRAVIS_BUILD_DIR ~/demo
   mv ~/kendryte-standalone-sdk $TRAVIS_BUILD_DIR
+  mv ~/demo/cache $TRAVIS_BUILD_DIR/cache
   cd $TRAVIS_BUILD_DIR/src
   cp -rf ~/demo/* .
 ## Check example code
