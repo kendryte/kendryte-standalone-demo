@@ -12,84 +12,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include <stdio.h>
 #include "spi_slave.h"
-#include "spi.h"
-#include "sysctl.h"
 #include "fpioa.h"
+#include "gpiohs.h"
+#include "stdio.h"
 
-struct slave_info_t spi_slave_device;
-spi_slave_handler_t spi_slave_handler;
+#define SPI_SLAVE_INT_PIN       18
+#define SPI_SLAVE_INT_IO        4
+#define SPI_SLAVE_READY_PIN     22
+#define SPI_SLAVE_READY_IO      5
+#define SPI_SLAVE_CS_PIN        19
+#define SPI_SLAVE_CLK_PIN       20
+#define SPI_SLAVE_MOSI_PIN      21
+#define SPI_SLAVE_MISO_PIN      21
 
-void spi_slave_receive(uint32_t data)
+int spi_slave_receive_hook(void *data)
 {
-    if(data & 0x40000000)
-    {
-        if (spi_slave_device.acces_reg < SLAVE_MAX_ADDR)
-            spi_slave_device.reg_data[spi_slave_device.acces_reg] = data & 0x3FFFFFFF;
-        spi_slave_device.acces_reg = SLAVE_MAX_ADDR;
-    }
-    else
-    {
-        spi_slave_device.acces_reg = (data & 0x3FFFFFFF);
-    }
+    printf("%d\n", ((spi_slave_command_t *)data)->err);
+    return 0;
 }
 
-uint32_t spi_slave_transmit(uint32_t data)
+int spi_slave_init(uint8_t *data, uint32_t len)
 {
-    uint32_t ret = 0;
-    spi_slave_device.acces_reg = (data & 0x3FFFFFFF);
-    if (spi_slave_device.acces_reg < SLAVE_MAX_ADDR)
-        ret = spi_slave_device.reg_data[spi_slave_device.acces_reg];
-    else
-        ret = 0xFF;
-    spi_slave_device.acces_reg = SLAVE_MAX_ADDR;
-    return ret;
+    fpioa_set_function(SPI_SLAVE_CS_PIN, FUNC_SPI_SLAVE_SS);
+    fpioa_set_function(SPI_SLAVE_CLK_PIN, FUNC_SPI_SLAVE_SCLK);
+    fpioa_set_function(SPI_SLAVE_MOSI_PIN, FUNC_SPI_SLAVE_D0);
+    fpioa_set_function(SPI_SLAVE_INT_PIN, FUNC_GPIOHS0 + SPI_SLAVE_INT_IO);
+    fpioa_set_function(SPI_SLAVE_READY_PIN, FUNC_GPIOHS0 + SPI_SLAVE_READY_IO);
+    spi_slave_config(SPI_SLAVE_INT_IO, SPI_SLAVE_READY_IO, DMAC_CHANNEL5, 32, data, len, spi_slave_receive_hook);
+
+    return 0;
 }
 
-spi_slave_event_t spi_slave_event(uint32_t data)
-{
-    if(data & 0x80000000)
-        return SPI_EV_RECV;
-    else
-        return SPI_EV_TRANS;
-}
-
-void spi_slave_init(void)
-{
-    spi_slave_handler.on_event = spi_slave_event,
-    spi_slave_handler.on_receive = spi_slave_receive,
-    spi_slave_handler.on_transmit = spi_slave_transmit,
-
-    spi_slave_config(32, &spi_slave_handler);
-}
-
-void spi_master_init(void)
-{
-    spi_init(0, SPI_WORK_MODE_0, SPI_FF_STANDARD, 32, 0);
-    spi_set_clk_rate(0, 23000000);
-}
-
-void spi_write_reg(uint32_t reg, uint32_t data)
-{
-    uint32_t reg_value = reg | 0x80000000;
-    uint32_t data_value = data | 0xc0000000;
-    spi_send_data_standard(0, 0, (const uint8_t *)&reg_value, 4, (const uint8_t *)&data_value, 4);
-}
-
-uint32_t spi_read_reg(uint32_t reg)
-{
-    uint32_t value = 0;
-
-    uint32_t reg_value = reg & 0x7FFFFFFF;
-
-    spi_send_data_standard(0, 0, (const uint8_t *)&reg_value, 4, NULL, 0);
-
-    fpioa_set_function(36, FUNC_SPI0_D1);
-    fpioa_set_function(38, FUNC_SPI0_D0);
-    spi_receive_data_standard(0, 0,  NULL, 0, (uint8_t *)&value, 4);
-    fpioa_set_function(36, FUNC_SPI0_D0);
-    fpioa_set_function(38, FUNC_SPI0_D1);
-	return value;
-}
