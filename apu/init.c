@@ -24,7 +24,7 @@ int16_t APU_VOC_BUFFER[APU_VOC_CHANNEL_SIZE]
 
 int int_apu(void *ctx)
 {
-	struct apu_int_stat_t rdy_reg = apu->bf_int_stat_reg;
+	apu_int_stat_t rdy_reg = apu->bf_int_stat_reg;
 
 	if (rdy_reg.dir_search_data_rdy) {
 		apu_dir_clear_int_state();
@@ -213,7 +213,7 @@ void init_bf(void)
 		0x03c3, 0x03c3, 0x03c3, 0x03c3, 0x03c3, 0x03c3,
 		0x03c3, 0x03c3, 0x03c3, 0x03c3, 0x03c3,
 	};
-//3cm	
+//3cm
 	// uint8_t offsets[16][8] = {
 	// 	{0, 1, 5, 7, 7, 5, 1, 4, },
 	// 	{0, 0, 3, 6, 7, 6, 3, 4, },
