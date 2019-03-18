@@ -74,7 +74,7 @@ uint32_t spi_get_rate(uint8_t spi_bus)
     return freq_spi_src / spi_adapter->baudr;
 }
 
-bool ws2812_send_data(uint32_t spi_num, dmac_channel_number_t DMAC_NUM, ws2812_info *ws)
+bool ws2812_send_data(uint32_t spi_num, dmac_channel_number_t dmac_num, ws2812_info *ws)
 {
 
     uint32_t longbit;
@@ -173,7 +173,7 @@ bool ws2812_send_data(uint32_t spi_num, dmac_channel_number_t DMAC_NUM, ws2812_i
             }
         }
     }
-    spi_send_data_normal_dma(DMAC_NUM, spi_num, 0, tmp_spi_data, spi_send_cnt + reset_cnt, SPI_TRANS_INT);
+    spi_send_data_normal_dma(dmac_num, spi_num, 0, tmp_spi_data, spi_send_cnt + reset_cnt, SPI_TRANS_INT);
     free(tmp_spi_data);
     return true;
 }
