@@ -74,7 +74,7 @@ uint32_t spi_get_rate(uint8_t spi_bus)
     return freq_spi_src / spi_adapter->baudr;
 }
 
-bool ws2812_send_data(uint32_t SPINUM, dmac_channel_number_t DMAC_NUM, ws2812_info *ws)
+bool ws2812_send_data(uint32_t spi_num, dmac_channel_number_t DMAC_NUM, ws2812_info *ws)
 {
 
     uint32_t longbit;
@@ -90,11 +90,9 @@ bool ws2812_send_data(uint32_t SPINUM, dmac_channel_number_t DMAC_NUM, ws2812_in
     size_t ws_cnt = ws->ws_num;
     uint32_t *ws_data = (uint32_t *)ws->ws_buf;
 
-//  spi_init(SPINUM);
-    spi_init(SPINUM, SPI_WORK_MODE_0, SPI_FF_STANDARD, 32, 0);
-//  spi_master_config(SPINUM, SPI_Mode_0, SPI_FF_Standard, 32);
+    spi_init(spi_num, SPI_WORK_MODE_0, SPI_FF_STANDARD, 32, 0);
 
-    uint32_t freq_spi = spi_get_rate(SPINUM);
+    uint32_t freq_spi = spi_get_rate(spi_num);
     double clk_time = 1e9 / freq_spi;   // ns per clk
 
     uint32_t longtime = 850 / clk_time * clk_time;
@@ -175,7 +173,7 @@ bool ws2812_send_data(uint32_t SPINUM, dmac_channel_number_t DMAC_NUM, ws2812_in
             }
         }
     }
-    spi_send_data_normal_dma(DMAC_NUM, SPINUM, 0, tmp_spi_data, spi_send_cnt + reset_cnt, SPI_TRANS_INT);
+    spi_send_data_normal_dma(DMAC_NUM, spi_num, 0, tmp_spi_data, spi_send_cnt + reset_cnt, SPI_TRANS_INT);
     free(tmp_spi_data);
     return true;
 }

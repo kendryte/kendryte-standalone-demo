@@ -16,8 +16,7 @@ typedef struct _WS2812_INFO {
 	ws2812_data *ws_buf;
 } ws2812_info;
 
-//void ws2812_send_data(uint32_t SPINUM, enum dmac_channel_number DMAC_NUM,uint32_t ws_cnt, uint32_t *ws_data);
-bool ws2812_send_data(uint32_t SPINUM, dmac_channel_number_t DMAC_NUM, ws2812_info *ws);
+bool ws2812_send_data(uint32_t spi_num, dmac_channel_number_t DMAC_NUM, ws2812_info *ws);
 ws2812_info *ws2812_get_buf(uint32_t num);
 bool ws2812_release_buf(ws2812_info *ws);
 bool ws2812_clear(ws2812_info *ws);
