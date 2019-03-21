@@ -105,7 +105,6 @@ void ws2812_init_spi(uint8_t pin)
 
 bool ws2812_send_data_spi(uint32_t spi_num, dmac_channel_number_t dmac_num, ws2812_info *ws)
 {
-
     uint32_t longbit;
     uint32_t shortbit;
     uint32_t resbit;
