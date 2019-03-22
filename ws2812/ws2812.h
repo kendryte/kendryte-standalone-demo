@@ -4,6 +4,7 @@
 #include "dmac.h"
 #include "stdbool.h"
 #include "i2s.h"
+#include "spi.h"
 
 typedef struct _WS2812_DATA {
 	uint32_t blue : 8;
@@ -17,7 +18,7 @@ typedef struct _WS2812_INFO {
 	ws2812_data *ws_buf;
 } ws2812_info;
 
-void ws2812_init_spi(uint8_t pin, uint32_t spi_num);
+void ws2812_init_spi(uint8_t pin, spi_device_num_t spi_num);
 bool ws2812_send_data_spi(uint32_t spi_num, dmac_channel_number_t dmac_num, ws2812_info *ws);
 void ws2812_init_gpiohs(uint8_t pin, uint8_t gpiohs_num);
 bool ws2812_send_data_gpiohs(uint8_t gpiohs_num, ws2812_info *ws);

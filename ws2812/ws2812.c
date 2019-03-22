@@ -99,7 +99,7 @@ static inline void ws2812_send_1(uint8_t gpiohs_num, uint32_t long_cnt, uint32_t
     }
 }
 
-void ws2812_init_spi(uint8_t pin, uint32_t spi_num)
+void ws2812_init_spi(uint8_t pin, spi_device_num_t spi_num)
 {
     if(spi_num == 0)
         fpioa_set_function(pin, FUNC_SPI0_D0);
