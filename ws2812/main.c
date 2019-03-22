@@ -36,7 +36,7 @@ int main(void)
     #if WS_I2S_TEST
     #define I2S_NUM I2S_DEVICE_1
     sysctl_pll_set_freq(SYSCTL_PLL2, 45158400UL);
-    ws2812_init_i2s(WS_PIN, I2S_NUM, I2S_CHANNEL_3, 350000);
+    ws2812_init_i2s(WS_PIN, I2S_NUM, I2S_CHANNEL_3);
     #endif
 
     ws_info = ws2812_get_buf(6);

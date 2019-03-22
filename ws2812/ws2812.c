@@ -217,10 +217,11 @@ bool ws2812_send_data_spi(uint32_t spi_num, dmac_channel_number_t dmac_num, ws28
     return true;
 }
 
-/*sample_rate = PLL2 / 2 / 32 / 2 */
-void ws2812_init_i2s(uint8_t pin, i2s_device_number_t i2s_num, i2s_channel_num_t channel, uint32_t sample_rate)
+void ws2812_init_i2s(uint8_t pin, i2s_device_number_t i2s_num, i2s_channel_num_t channel)
 {
     fpioa_set_function(pin, FUNC_I2S0_OUT_D0 + channel + i2s_num * 11);
+    uint32_t pll2_rate = sysctl_clock_get_freq(SYSCTL_SOURCE_PLL2);
+    uint32_t sample_rate = pll2_rate / (2 * 32 * 2) - 1;
     i2s_set_sample_rate(i2s_num, sample_rate);
     i2s_init(i2s_num, I2S_TRANSMITTER, 0x3 << 2 *channel);
     i2s_tx_channel_config(i2s_num, channel,

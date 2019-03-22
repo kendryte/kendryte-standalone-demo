@@ -27,7 +27,7 @@ bool ws2812_release_buf(ws2812_info *ws);
 bool ws2812_clear(ws2812_info *ws);
 bool ws2812_set_data(ws2812_info *ws, uint32_t num, uint8_t r, uint8_t g, uint8_t b);
 /*sample_rate = PLL2 / 2 / 32 / 2 */
-void ws2812_init_i2s(uint8_t pin, i2s_device_number_t i2s_num, i2s_channel_num_t channel, uint32_t sample_rate);
+void ws2812_init_i2s(uint8_t pin, i2s_device_number_t i2s_num, i2s_channel_num_t channel);
 bool ws2812_send_data_i2s(i2s_device_number_t i2s_num, dmac_channel_number_t dmac_num, ws2812_info *ws);
 
 #endif
