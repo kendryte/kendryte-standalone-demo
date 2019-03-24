@@ -1,6 +1,6 @@
 # Hardware diagram
 
-```ditaa
+```ditaa {cmd=true args=["-E"]}
 
                  ^
                  |
