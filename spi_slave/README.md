@@ -13,14 +13,13 @@
 |            |       |            |
 |          CS+------>+CS          |
 |            |       |            |
-|  SPI    CLK+------>+CLK SPI     |
-|  MASTER    |       |    SLAVE   |
+|  SPI    CLK+------>+CLK  SPI    |
+|  MASTER    |       |     SLAVE  |
 |         DAT+-------+DAT         |
 |            |       |            |
 |         INT+<------+DRY         |
 |            |       |            |
 |            |       |            |
 +------------+       +------------+
-
 
 ```
