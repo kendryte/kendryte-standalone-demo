@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 #include <stdio.h>
-#include "rtc.h"
+#include <time.h>
 #include <unistd.h>
+#include "rtc.h"
 
-void get_date_time(void)
+
+void get_date_time(bool alarm)
 {
     int year;
     int month;
@@ -25,17 +27,61 @@ void get_date_time(void)
     int minute;
     int second;
     rtc_timer_get(&year, &month, &day, &hour, &minute, &second);
-    printf("%4d-%d-%d %d:%d:%d\n", year, month, day, hour, minute, second);
+    if (!alarm)
+        printf("%4d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
+    else
+        printf("Alarm at --> %4d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
+}
+
+int on_timer_interrupt(void *ctx)
+{
+    get_date_time(false);
+	return 0;
+}
+
+int on_alarm_interrupt(void *ctx)
+{
+    get_date_time(true);
+	return 0;
 }
 
 int main(void)
 {
+    plic_init();
     rtc_init();
     rtc_timer_set(2018, 9, 12, 23, 30, 29);
+    rtc_alarm_set(2018, 9, 12, 23, 30, 31);
+
+    printf("RTC Tick and Alarm Test\n" "Compiled in " __DATE__ " " __TIME__ "\n");
+
+    rtc_tick_irq_register(
+        false,
+        RTC_INT_SECOND,
+        on_timer_interrupt,
+        NULL,
+        1
+    );
+
+    rtc_alarm_irq_register(
+        false,
+        (rtc_mask_t) {
+            .second = 1, /* Second mask */
+            .minute = 0, /* Minute mask */
+            .hour = 0,   /* Hour mask */
+            .week = 0,   /* Week mask */
+            .day = 0,    /* Day mask */
+            .month = 0,  /* Month mask */
+            .year = 0,   /* Year mask */
+        },
+        on_alarm_interrupt,
+        NULL,
+        1
+    );
+
     while(1)
     {
         sleep(1);
-        get_date_time();
+        // get_date_time();
     }
     return 0;
 }
