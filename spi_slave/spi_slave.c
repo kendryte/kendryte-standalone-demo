@@ -12,99 +12,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include <stdio.h>
 #include "spi_slave.h"
-#include "spi.h"
-#include "sysctl.h"
+#include "fpioa.h"
+#include "gpiohs.h"
+#include "stdio.h"
 
-struct slave_info_t slave_device;
+#define SPI_SLAVE_INT_PIN       18
+#define SPI_SLAVE_INT_IO        4
+#define SPI_SLAVE_READY_PIN     22
+#define SPI_SLAVE_READY_IO      5
+#define SPI_SLAVE_CS_PIN        19
+#define SPI_SLAVE_CLK_PIN       20
+#define SPI_SLAVE_MOSI_PIN      21
+#define SPI_SLAVE_MISO_PIN      21
 
-int on_irq_spi_slave(void *ctx);
-
-void spi_slave_init(void)
+int spi_slave_receive_hook(void *data)
 {
-    sysctl_reset(SYSCTL_RESET_SPI2);
-    sysctl_clock_enable(SYSCTL_CLOCK_FPIOA);
-    sysctl_clock_enable(SYSCTL_CLOCK_SPI2);
-    sysctl_clock_set_threshold(SYSCTL_THRESHOLD_SPI2, 0);
-
-    spi[2]->ssienr = 0x00;
-    spi[2]->ctrlr0 = 0x001f0600;
-    spi[2]->txftlr = 0x00000000;
-    spi[2]->rxftlr = 0x00000000;
-    spi[2]->imr = 0x00000010;
-    spi[2]->ssienr = 0x01;
-
-    plic_set_priority(IRQN_SPI_SLAVE_INTERRUPT, 1);
-    plic_irq_enable(IRQN_SPI_SLAVE_INTERRUPT);
-    plic_irq_register(IRQN_SPI_SLAVE_INTERRUPT, on_irq_spi_slave, NULL);
-}
-
-int on_irq_spi_slave(void *ctx)
-{
-    uint8_t isr = spi[2]->isr;
-    uint32_t data;
-
-    if (isr & 0x10)
-    {
-        data = spi[2]->dr[0];
-        if (data & 0x80000000)
-        { // cmd
-            slave_device.acces_reg = (data & 0x3FFFFFFF);
-            if (data & 0x40000000)
-            { // read
-                spi[2]->ssienr = 0x00;
-                spi[2]->ctrlr0 = 0x001f0100;
-                spi[2]->ssienr = 0x01;
-                if (slave_device.acces_reg < SLAVE_MAX_ADDR)
-                    data = slave_device.reg_data[slave_device.acces_reg];
-                else
-                    data = 0xFF;
-                spi[2]->dr[0] = data;
-                spi[2]->dr[0] = data;
-                spi[2]->imr = 0x00000001;
-                slave_device.acces_reg = SLAVE_MAX_ADDR;
-            }
-        }
-        else
-        { // data
-            if (slave_device.acces_reg < SLAVE_MAX_ADDR)
-                slave_device.reg_data[slave_device.acces_reg] = data;
-            slave_device.acces_reg = SLAVE_MAX_ADDR;
-        }
-    }
-    if (isr & 0x01)
-    {
-        spi[2]->ssienr = 0x00;
-        spi[2]->ctrlr0 = 0x001f0600;
-        spi[2]->imr = 0x00000010;
-        spi[2]->ssienr = 0x01;
-    }
+    printf("%d\n", ((spi_slave_command_t *)data)->err);
     return 0;
 }
 
-void spi_master_init(void)
+int spi_slave_init(uint8_t *data, uint32_t len)
 {
-    spi_init(0, SPI_WORK_MODE_0, SPI_FF_STANDARD, 32, 0);
-    spi_set_clk_rate(0, 23000000);
+    fpioa_set_function(SPI_SLAVE_CS_PIN, FUNC_SPI_SLAVE_SS);
+    fpioa_set_function(SPI_SLAVE_CLK_PIN, FUNC_SPI_SLAVE_SCLK);
+    fpioa_set_function(SPI_SLAVE_MOSI_PIN, FUNC_SPI_SLAVE_D0);
+    fpioa_set_function(SPI_SLAVE_INT_PIN, FUNC_GPIOHS0 + SPI_SLAVE_INT_IO);
+    fpioa_set_function(SPI_SLAVE_READY_PIN, FUNC_GPIOHS0 + SPI_SLAVE_READY_IO);
+    spi_slave_config(SPI_SLAVE_INT_IO, SPI_SLAVE_READY_IO, DMAC_CHANNEL5, 8, data, len, spi_slave_receive_hook);
+
+    return 0;
 }
 
-void spi_write_reg(uint32_t reg, uint32_t data)
-{
-    uint32_t reg_value = reg | 0x80000000;
-    uint32_t data_value = data;
-    spi_send_data_standard(0, 0, (const uint8_t *)&reg_value, 4, (const uint8_t *)&data_value, 4);
-}
-
-uint32_t spi_read_reg(uint32_t reg)
-{
-    uint32_t value = 0;
-
-    uint32_t reg_value = reg | 0xc0000000;
-
-    spi_send_data_standard(0, 0, (const uint8_t *)&reg_value, 4, NULL, 0);
-
-    spi_receive_data_standard(0, 0,  NULL, 0, (uint8_t *)&value, 4);
-	return value;
-}

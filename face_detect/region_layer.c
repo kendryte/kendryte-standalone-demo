@@ -19,26 +19,21 @@ typedef struct
 } sortable_box_t;
 
 
-int region_layer_init(region_layer_t *rl, kpu_task_t *task)
+int region_layer_init(region_layer_t *rl, int width, int height, int channels, int origin_width, int origin_height)
 {
     int flag = 0;
-    kpu_layer_argument_t *last_layer = &task->layers[task->layers_length-1];
-    kpu_layer_argument_t *first_layer = &task->layers[0];
 
     rl->coords = 4;
     rl->image_width = 320;
     rl->image_height = 240;
 
-    rl->classes = (last_layer->image_channel_num.data.o_ch_num + 1) / 5 - 5;
-    rl->net_width = first_layer->image_size.data.i_row_wid + 1;
-    rl->net_height = first_layer->image_size.data.i_col_high + 1;
-    rl->layer_width = last_layer->image_size.data.o_row_wid + 1;
-    rl->layer_height = last_layer->image_size.data.o_col_high + 1;
+    rl->classes = channels / 5 - 5;
+    rl->net_width = origin_width;
+    rl->net_height = origin_height;
+    rl->layer_width = width;
+    rl->layer_height = height;
     rl->boxes_number = (rl->layer_width * rl->layer_height * rl->anchor_number); 
     rl->output_number = (rl->boxes_number * (rl->classes + rl->coords + 1));
-    rl->input = task->dst;
-    rl->scale = task->output_scale;
-    rl->bias = task->output_bias;
 
     rl->output = malloc(rl->output_number * sizeof(float));
     if (rl->output == NULL)
@@ -64,23 +59,6 @@ int region_layer_init(region_layer_t *rl, kpu_task_t *task)
         flag = -4;
         goto malloc_error;
     }
-    rl->activate = malloc(256 * sizeof(float));
-    if (rl->activate == NULL)
-    {
-        flag = -5;
-        goto malloc_error;
-    }
-    rl->softmax = malloc(256 * sizeof(float));
-    if (rl->softmax == NULL)
-    {
-        flag = -5;
-        goto malloc_error;
-    }
-    for (int i = 0; i < 256; i++)
-    {
-        rl->activate[i] = 1.0 / (1.0 + expf(-(i * rl->scale + rl->bias)));
-        rl->softmax[i] = expf(rl->scale * (i - 255));
-    }
     for (uint32_t i = 0; i < rl->boxes_number; i++)
         rl->probs[i] = &(rl->probs_buf[i * (rl->classes + 1)]);
     return 0;
@@ -89,8 +67,6 @@ malloc_error:
     free(rl->boxes);
     free(rl->probs_buf);
     free(rl->probs);
-    free(rl->activate);
-    free(rl->softmax);
     return flag;
 }
 
@@ -100,17 +76,20 @@ void region_layer_deinit(region_layer_t *rl)
     free(rl->boxes);
     free(rl->probs_buf);
     free(rl->probs);
-    free(rl->activate);
-    free(rl->softmax);
+}
+
+static inline float sigmoid(float x)
+{
+    return 1.f / (1.f + expf(-x));
 }
 
 static void activate_array(region_layer_t *rl, int index, int n)
 {
     float *output = &rl->output[index];
-    uint8_t *input = &rl->input[index];
+    float *input = &rl->input[index];
 
     for (int i = 0; i < n; ++i)
-        output[i] = rl->activate[input[i]];
+        output[i] = sigmoid(input[i]);
 }
 
 static int entry_index(region_layer_t *rl, int location, int entry)
@@ -122,13 +101,13 @@ static int entry_index(region_layer_t *rl, int location, int entry)
     return n * wh * (rl->coords + rl->classes + 1) + entry * wh + loc;
 }
 
-static void softmax(region_layer_t *rl, uint8_t *input, int n, int stride, float *output)
+static void softmax(region_layer_t *rl, float *input, int n, int stride, float *output)
 {
     int i;
-    int diff;
+    float diff;
     float e;
     float sum = 0;
-    uint8_t largest_i = input[0];
+    float largest_i = input[0];
 
     for (i = 0; i < n; ++i)
     {
@@ -138,7 +117,7 @@ static void softmax(region_layer_t *rl, uint8_t *input, int n, int stride, float
 
     for (i = 0; i < n; ++i) {
         diff = input[i * stride] - largest_i;
-        e = rl->softmax[diff + 255];
+        e = expf(diff);
         sum += e;
         output[i * stride] = e;
     }
@@ -146,7 +125,7 @@ static void softmax(region_layer_t *rl, uint8_t *input, int n, int stride, float
         output[i * stride] /= sum;
 }
 
-static void softmax_cpu(region_layer_t *rl, uint8_t *input, int n, int batch, int batch_offset, int groups, int stride, float *output)
+static void softmax_cpu(region_layer_t *rl, float *input, int n, int batch, int batch_offset, int groups, int stride, float *output)
 {
     int g, b;
 
@@ -161,7 +140,7 @@ static void forward_region_layer(region_layer_t *rl)
     int index;
 
     for (index = 0; index < rl->output_number; index++)
-        rl->output[index] = rl->input[index] * rl->scale + rl->bias;
+        rl->output[index] = rl->input[index];
 
     for (int n = 0; n < rl->anchor_number; ++n)
     {

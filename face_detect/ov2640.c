@@ -16,6 +16,7 @@
 #include "ov2640.h"
 #include "dvp.h"
 #include "plic.h"
+#include "board_config.h"
 
 const uint8_t ov2640_config[][2]=
 {
@@ -28,7 +29,11 @@ const uint8_t ov2640_config[][2]=
     {0x3c, 0x32},
     {0x11, 0x00},
     {0x09, 0x02},
+#if BOARD_LICHEEDAN
     {0x04, 0x88},
+#else
+    {0x04, 0x58},
+#endif
     {0x13, 0xe5},
     {0x14, 0x48},
     {0x2c, 0x0c},

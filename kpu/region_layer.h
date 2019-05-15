@@ -34,20 +34,16 @@ typedef struct
     uint32_t layer_height;
     uint32_t boxes_number;
     uint32_t output_number;
-    float scale;
-    float bias;
     void *boxes;
-    uint8_t *input;
+    float *input;
     float *output;
     float *probs_buf;
     float **probs;
-    float *activate;
-    float *softmax;
 } region_layer_t;
 
 typedef void (*callback_draw_box)(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t class, float prob);
 
-int region_layer_init(region_layer_t *rl, kpu_task_t *task);
+int region_layer_init(region_layer_t *rl, int width, int height, int channels, int origin_width, int origin_height);
 void region_layer_deinit(region_layer_t *rl);
 void region_layer_run(region_layer_t *rl, obj_info_t *obj_info);
 void region_layer_draw_boxes(region_layer_t *rl, callback_draw_box callback);

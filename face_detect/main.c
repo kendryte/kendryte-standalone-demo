@@ -10,32 +10,41 @@
 #include "gpiohs.h"
 #include "fpioa.h"
 #include "lcd.h"
+#include "nt35310.h"
 #include "dvp.h"
 #include "ov5640.h"
 #include "ov2640.h"
 #include "uarths.h"
 #include "kpu.h"
-#include "model.h"
 #include "region_layer.h"
 #include "image_process.h"
 #include "board_config.h"
 #include "w25qxx.h"
-
+#define INCBIN_STYLE INCBIN_STYLE_SNAKE
+#define INCBIN_PREFIX
+#include "incbin.h"
 
 #define PLL0_OUTPUT_FREQ 800000000UL
 #define PLL1_OUTPUT_FREQ 400000000UL
-
 
 volatile uint32_t g_ai_done_flag;
 volatile uint8_t g_dvp_finish_flag;
 static image_t kpu_image, display_image;
 
-static kpu_task_t face_detect_task;
+kpu_model_context_t face_detect_task;
 static region_layer_t face_detect_rl;
 static obj_info_t face_detect_info;
 #define ANCHOR_NUM 5
 static float anchor[ANCHOR_NUM * 2] = {1.889,2.5245,  2.9465,3.94056, 3.99987,5.3658, 5.155437,6.92275, 6.718375,9.01025};
 
+#define  LOAD_KMODEL_FROM_FLASH  1
+
+#if LOAD_KMODEL_FROM_FLASH
+#define KMODEL_SIZE (380 * 1024)
+uint8_t model_data[KMODEL_SIZE];
+#else
+INCBIN(model, "detect.kmodel");
+#endif
 
 static void ai_done(void *ctx)
 {
@@ -75,6 +84,7 @@ static void io_mux_init(void)
     fpioa_set_function(38, FUNC_GPIOHS0 + DCX_GPIONUM);
     fpioa_set_function(36, FUNC_SPI0_SS3);
     fpioa_set_function(39, FUNC_SPI0_SCLK);
+    fpioa_set_function(37, FUNC_GPIOHS0 + RST_GPIONUM);
 
     sysctl_set_spi0_dvp_data(1);
 #else
@@ -182,6 +192,9 @@ int main(void)
     printf("flash init\n");
     w25qxx_init(3, 0);
     w25qxx_enable_quad_mode();
+#if LOAD_KMODEL_FROM_FLASH
+    w25qxx_read_data(0xA00000, model_data, KMODEL_SIZE, W25QXX_QUAD_FAST);
+#endif
     /* LCD init */
     printf("LCD init\n");
     lcd_init();
@@ -238,21 +251,16 @@ int main(void)
     plic_irq_register(IRQN_DVP_INTERRUPT, dvp_irq, NULL);
     plic_irq_enable(IRQN_DVP_INTERRUPT);
     /* init face detect model */
-    if (model_init(&face_detect_task, 8 * 1024 * 1024) != 0)
+    if (kpu_load_kmodel(&face_detect_task, model_data) != 0)
     {
-        model_deinit(&face_detect_task);
         printf("\nmodel init error\n");
         while (1);
     }
-    face_detect_task.src = kpu_image.addr;
-    face_detect_task.dma_ch = 5;
-    face_detect_task.callback = ai_done;
-    kpu_single_task_init(&face_detect_task);
     face_detect_rl.anchor_number = ANCHOR_NUM;
     face_detect_rl.anchor = anchor;
     face_detect_rl.threshold = 0.7;
     face_detect_rl.nms_value = 0.3;
-    region_layer_init(&face_detect_rl, &face_detect_task);
+    region_layer_init(&face_detect_rl, 20, 15, 30, kpu_image.width, kpu_image.height);
     /* enable global interrupt */
     sysctl_enable_irq();
     /* system start */
@@ -266,16 +274,19 @@ int main(void)
             ;
         /* run face detect */
         g_ai_done_flag = 0;
-//        kpu_run(&face_detect_task, DMAC_CHANNEL5, NULL, NULL, ai_done);
-        kpu_start(&face_detect_task);
+        kpu_run_kmodel(&face_detect_task, kpu_image.addr, DMAC_CHANNEL5, ai_done, NULL);
         while(!g_ai_done_flag);
+        float *output;
+        size_t output_size;
+        kpu_get_output(&face_detect_task, 0, (uint8_t **)&output, &output_size);
+        face_detect_rl.input = output;
         region_layer_run(&face_detect_rl, &face_detect_info);
         /* run key point detect */
         for (uint32_t face_cnt = 0; face_cnt < face_detect_info.obj_number; face_cnt++)
         {
-            draw_edge(display_image.addr, &face_detect_info, face_cnt, RED);
+            draw_edge((uint32_t *)display_image.addr, &face_detect_info, face_cnt, RED);
         }
         /* display result */
-        lcd_draw_picture(0, 0, 320, 240, display_image.addr);
+        lcd_draw_picture(0, 0, 320, 240, (uint32_t *)display_image.addr);
     }
 }

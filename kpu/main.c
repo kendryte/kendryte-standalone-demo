@@ -19,14 +19,18 @@
 #include "utils.h"
 #include "kpu.h"
 #include "region_layer.h"
-#include "gencode_output.h"
+#define INCBIN_STYLE INCBIN_STYLE_SNAKE
+#define INCBIN_PREFIX
+#include "incbin.h"
 
 #define PLL0_OUTPUT_FREQ 800000000UL
 #define PLL1_OUTPUT_FREQ 400000000UL
 
 #define CLASS_NUMBER 20
 
-kpu_task_t task;
+INCBIN(model, "yolo.kmodel");
+
+kpu_model_context_t task;
 static region_layer_t detect_rl;
 
 volatile uint8_t g_ai_done_flag;
@@ -271,17 +275,17 @@ int main(void)
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
     /* init kpu */
-    kpu_task_gencode_output_init(&task);
-    task.src = g_ai_buf;
-    task.dma_ch = 5;
-    task.callback = ai_done;
-    kpu_single_task_init(&task);
+    if (kpu_load_kmodel(&task, model_data) != 0)
+    {
+        printf("\nmodel init error\n");
+        while (1);
+    }
 
     detect_rl.anchor_number = ANCHOR_NUM;
     detect_rl.anchor = g_anchor;
     detect_rl.threshold = 0.7;
     detect_rl.nms_value = 0.3;
-    region_layer_init(&detect_rl, &task);
+    region_layer_init(&detect_rl, 10, 7, 125, 320, 240);
 
     while (1)
     {
@@ -290,9 +294,14 @@ int main(void)
             ;
 
         /* start to calculate */
-        kpu_start(&task);
+        kpu_run_kmodel(&task, g_ai_buf, DMAC_CHANNEL5, ai_done, NULL);
         while(!g_ai_done_flag);
         g_ai_done_flag = 0;
+
+        float *output;
+        size_t output_size;
+        kpu_get_output(&task, 0, &output, &output_size);
+        detect_rl.input = output;
 
         /* start region layer */
         region_layer_run(&detect_rl, NULL);

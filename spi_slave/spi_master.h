@@ -12,12 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __SPI_SLAVE__
-#define __SPI_SLAVE__
+#ifndef __SPI_MASTER__
+#define __SPI_MASTER__
 
 #include <stdint.h>
 #include "spi.h"
 
-int spi_slave_init(uint8_t *data, uint32_t len);
+int spi_master_init(void);
+int spi_master_transfer(uint8_t *data, uint32_t addr, uint32_t len, uint8_t mode);
 
 #endif
