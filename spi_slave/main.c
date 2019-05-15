@@ -76,9 +76,15 @@ int main(void)
     }
     printf("\n");
 
-    uint32_t addr;
-    spi_master_transfer((uint8_t *)&addr, 8, 4, READ_CONFIG);
-
+    uint32_t addr, addr_bak;
+    do
+    {
+        addr = 0;
+        addr_bak = 0;
+        spi_master_transfer((uint8_t *)&addr, 8, 4, READ_CONFIG);
+        spi_master_transfer((uint8_t *)&addr_bak, 8, 4, READ_CONFIG);
+    }while(addr != addr_bak);
+    
     for (uint32_t i = 0; i < 8; i++)
         test_data[i] = i;
     spi_master_transfer(test_data, addr, 8, WRITE_DATA_BYTE);
