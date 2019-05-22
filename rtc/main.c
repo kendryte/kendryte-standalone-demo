@@ -47,10 +47,9 @@ int on_alarm_interrupt(void *ctx)
 
 int main(void)
 {
-    plic_init();
     rtc_init();
-    rtc_timer_set(2018, 9, 12, 23, 30, 29);
-    rtc_alarm_set(2018, 9, 12, 23, 30, 31);
+    rtc_timer_set(2018, 9, 12, 23, 30, 50);
+    rtc_alarm_set(2018, 9, 12, 23, 31, 00);
 
     printf("RTC Tick and Alarm Test\n" "Compiled in " __DATE__ " " __TIME__ "\n");
 
@@ -65,8 +64,8 @@ int main(void)
     rtc_alarm_irq_register(
         false,
         (rtc_mask_t) {
-            .second = 1, /* Second mask */
-            .minute = 0, /* Minute mask */
+            .second = 0, /* Second mask */
+            .minute = 1, /* Minute mask */
             .hour = 0,   /* Hour mask */
             .week = 0,   /* Week mask */
             .day = 0,    /* Day mask */

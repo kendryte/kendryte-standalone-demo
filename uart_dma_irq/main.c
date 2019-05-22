@@ -19,6 +19,7 @@
 #include "gpiohs.h"
 #include "sysctl.h"
 #include <unistd.h>
+#include <stdlib.h>
 
 #define CMD_LENTH  4
 
@@ -27,7 +28,7 @@
 
 #define UART_NUM    UART_DEVICE_1
 
-uint8_t recv_buf[48];
+uint32_t recv_buf[48];
 #define RECV_DMA_LENTH  6
 
 volatile uint32_t recv_flag = 0;
@@ -57,11 +58,28 @@ int uart_send_done(void *ctx)
 
 int uart_recv_done(void *ctx)
 {
-    uint8_t *v_dest = ctx + RECV_DMA_LENTH;
+    uint32_t *v_dest = ((uint32_t *)ctx) + RECV_DMA_LENTH;
     if(v_dest >= recv_buf + 48)
         v_dest = recv_buf;
-    uart_receive_data_dma_irq(UART_NUM, DMAC_CHANNEL1, v_dest, RECV_DMA_LENTH, uart_recv_done, v_dest, 2);
-    uint8_t *v_buf = (uint8_t *)ctx;
+
+    uart_data_t data = (uart_data_t)
+    {
+        .rx_channel = DMAC_CHANNEL1,
+        .rx_buf = v_dest,
+        .rx_len = RECV_DMA_LENTH,
+        .transfer_mode = UART_RECEIVE,
+    };
+
+    plic_interrupt_t irq = (plic_interrupt_t)
+    {
+        .callback = uart_recv_done,
+        .ctx = v_dest,
+        .priority = 2,
+    };
+
+    uart_handle_data_dma(UART_NUM, data, &irq);
+//    uart_receive_data_dma_irq(UART_NUM, DMAC_CHANNEL1, v_dest, RECV_DMA_LENTH, uart_recv_done, v_dest, 2);
+    uint32_t *v_buf = (uint32_t *)ctx;
     for(uint32_t i = 0; i < RECV_DMA_LENTH; i++)
     {
         if(v_buf[i] == 0x55 && (recv_flag == 0 || recv_flag == 1))
@@ -115,19 +133,53 @@ int main(void)
     uart_init(UART_NUM);
     uart_configure(UART_NUM, 115200, 8, UART_STOP_1, UART_PARITY_NONE);
 
-    char *hel = {"hello!\n"};
-    uart_send_data_dma_irq(UART_NUM, DMAC_CHANNEL0, (uint8_t *)hel, strlen(hel), uart_send_done, NULL, 1);
+    uint8_t *hel = {"hello!\n"};
 
-    uart_receive_data_dma_irq(UART_NUM, DMAC_CHANNEL1, recv_buf, RECV_DMA_LENTH, uart_recv_done, recv_buf, 2);
+    uint32_t *v_tx_buf = malloc(sizeof(hel) * sizeof(uint32_t));
+    for(uint32_t i = 0; i < strlen(hel); i++)
+    {
+        v_tx_buf[i] = hel[i];
+    }
 
+    uart_data_t data = (uart_data_t)
+    {
+        .tx_channel = DMAC_CHANNEL0,
+        .tx_buf = v_tx_buf,
+        .tx_len = strlen(hel),
+        .transfer_mode = UART_SEND,
+    };
+
+    plic_interrupt_t irq = (plic_interrupt_t)
+    {
+        .callback = uart_send_done,
+        .ctx = NULL,
+        .priority = 1,
+    };
+
+    uart_handle_data_dma(UART_NUM, data, &irq);
+//    while(!g_uart_send_flag);
+//    uart_send_data(UART_NUM, "Send Over\n", 10);
+
+    uart_data_t v_rx_data = (uart_data_t)
+    {
+        .rx_channel = DMAC_CHANNEL1,
+        .rx_buf = recv_buf,
+        .rx_len = RECV_DMA_LENTH,
+        .transfer_mode = UART_RECEIVE,
+    };
+
+    plic_interrupt_t v_rx_irq = (plic_interrupt_t)
+    {
+        .callback = uart_recv_done,
+        .ctx = recv_buf,
+        .priority = 2,
+    };
+    uart_handle_data_dma(UART_NUM, v_rx_data, &v_rx_irq);
     while(1)
     {
-        if(g_uart_send_flag)
-        {
-            sleep(1);
-            uart_send_data_dma_irq(UART_NUM, DMAC_CHANNEL0, (uint8_t *)hel, strlen(hel), uart_send_done, NULL, 1);
-            g_uart_send_flag = 0;
-        }
+        sleep(1);
+        uart_handle_data_dma(UART_NUM, data, &irq);
+        g_uart_send_flag = 1;
     }
 }
 
