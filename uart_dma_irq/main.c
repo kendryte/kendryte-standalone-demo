@@ -78,7 +78,6 @@ int uart_recv_done(void *ctx)
     };
 
     uart_handle_data_dma(UART_NUM, data, &irq);
-//    uart_receive_data_dma_irq(UART_NUM, DMAC_CHANNEL1, v_dest, RECV_DMA_LENTH, uart_recv_done, v_dest, 2);
     uint32_t *v_buf = (uint32_t *)ctx;
     for(uint32_t i = 0; i < RECV_DMA_LENTH; i++)
     {
@@ -157,8 +156,6 @@ int main(void)
     };
 
     uart_handle_data_dma(UART_NUM, data, &irq);
-//    while(!g_uart_send_flag);
-//    uart_send_data(UART_NUM, "Send Over\n", 10);
 
     uart_data_t v_rx_data = (uart_data_t)
     {
