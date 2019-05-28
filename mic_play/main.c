@@ -21,10 +21,13 @@
 #include "fpioa.h"
 #include "uarths.h"
 
-#define FRAME_LEN   128
-uint32_t rx_buf[1024];
+#define FRAME_LEN   512
+int16_t rx_buf[FRAME_LEN * 2 * 2];
 uint32_t g_index;
 uint32_t g_tx_len;
+
+uint32_t g_rx_dma_buf[FRAME_LEN * 2 * 2];
+uint8_t i2s_rec_flag;
 
 void io_mux_init(){
 
@@ -36,7 +39,35 @@ void io_mux_init(){
     fpioa_set_function(35, FUNC_I2S2_SCLK);
     fpioa_set_function(34, FUNC_I2S2_WS);
 }
+int i2s_dma_irq(void *ctx)
+{
+    uint32_t i;
 
+    if(g_index)
+    {
+        
+        i2s_receive_data_dma(I2S_DEVICE_0, &g_rx_dma_buf[g_index], FRAME_LEN * 2, DMAC_CHANNEL1);
+        g_index = 0;
+        for(i = 0; i < FRAME_LEN; i++)
+        {
+            rx_buf[2 * i] = (int16_t)(g_rx_dma_buf[2 * i + 1] & 0xffff);
+            rx_buf[2 * i + 1] = (int16_t)(g_rx_dma_buf[2 * i + 1] & 0xffff);
+        }
+        i2s_rec_flag = 1;
+    }
+    else
+    {
+        i2s_receive_data_dma(I2S_DEVICE_0, &g_rx_dma_buf[0], FRAME_LEN * 2, DMAC_CHANNEL1);
+        g_index = FRAME_LEN * 2;
+        for(i = FRAME_LEN; i < FRAME_LEN * 2; i++)
+        {
+            rx_buf[2 * i] = (int16_t)(g_rx_dma_buf[2 * i + 1] & 0xffff);
+            rx_buf[2 * i + 1] = (int16_t)(g_rx_dma_buf[2 * i + 1] & 0xffff);
+        }
+        i2s_rec_flag = 2;
+    }
+    return 0;
+}
 int main(void)
 {
     sysctl_pll_set_freq(SYSCTL_PLL0, 320000000UL);
@@ -61,27 +92,29 @@ int main(void)
         TRIGGER_LEVEL_4,
         RIGHT_JUSTIFYING_MODE
         );
+    i2s_set_sample_rate(I2S_DEVICE_0, 16000);
+    i2s_set_sample_rate(I2S_DEVICE_2, 16000);
+    plic_init();
+    dmac_init();
+    dmac_set_irq(DMAC_CHANNEL1, i2s_dma_irq, NULL, 4);
 
     i2s_receive_data_dma(I2S_DEVICE_0, &rx_buf[g_index], FRAME_LEN * 2, DMAC_CHANNEL1);
-
+    
     while (1)
     {
-        g_index += (FRAME_LEN*2);
-        if(g_index >= 1023)
+        if(i2s_rec_flag == 1)
         {
-            g_index = 0;
+            i2s_play(I2S_DEVICE_2,
+            DMAC_CHANNEL0, (uint8_t *)(&rx_buf[0]), FRAME_LEN * 4, 1024, 16, 2);
+            i2s_rec_flag = 0;
         }
-        i2s_receive_data_dma(I2S_DEVICE_0, &rx_buf[g_index], FRAME_LEN * 2, DMAC_CHANNEL1);
-
-        if (g_index - g_tx_len >= FRAME_LEN || g_tx_len - g_index >= (1023 - FRAME_LEN * 2))
+        else if(i2s_rec_flag == 2)
         {
-            i2s_send_data_dma(I2S_DEVICE_2, &rx_buf[g_tx_len], FRAME_LEN * 2, DMAC_CHANNEL0);
-            g_tx_len += (FRAME_LEN * 2);
-            if (g_tx_len >= 1023)
-                g_tx_len = 0;
+            i2s_play(I2S_DEVICE_2,
+            DMAC_CHANNEL0, (uint8_t *)(&rx_buf[FRAME_LEN * 2]), FRAME_LEN * 4, 1024, 16, 2);
+            i2s_rec_flag = 0;
         }
     }
 
     return 0;
 }
-
