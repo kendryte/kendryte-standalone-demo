@@ -371,10 +371,15 @@ uint8_t sd_init(void)
 	/*------------Put SD in SPI mode--------------*/
 	/*!< SD initialized and set to SPI mode properly */
 
-    sd_send_cmd(SD_CMD0, 0, 0x95);
-    result = sd_get_response();
-    sd_end_cmd();
-    if (result != 0x01)
+    index = 0xFF;
+    while (index--) {
+        sd_send_cmd(SD_CMD0, 0, 0x95);
+        result = sd_get_response();
+        sd_end_cmd();
+        if (result == 0x01)
+            break;
+    }
+    if (index == 0)
     {
         printf("SD_CMD0 is %X\n", result);
         return 0xFF;

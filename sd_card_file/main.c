@@ -66,7 +66,6 @@ static int fs_init(void)
 int main(void)
 {
     sysctl_pll_set_freq(SYSCTL_PLL0, 800000000UL);
-    uarths_init();
 
     io_mux_init();
     plic_init();
