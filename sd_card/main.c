@@ -31,19 +31,11 @@ void io_mux_init(void)
 
 }
 
-int core1_func(void *ctx)
-{
-    printf("core1 running!\n");
-    while(1);
-}
-
 int main(void)
 {
     sysctl_pll_set_freq(SYSCTL_PLL0, 320000000UL);
     sysctl_pll_set_freq(SYSCTL_PLL1, 160000000UL);
     sysctl_pll_set_freq(SYSCTL_PLL2, 45158400UL);
-    uarths_init();
-    register_core1(core1_func, NULL);
 
     io_mux_init();
     dmac_init();
