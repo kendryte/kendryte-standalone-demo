@@ -1,11 +1,14 @@
 #include "rgb2bmp.h"
 #include "ff.h"
 
-int rgb565tobmp(char *buf,int width,int height, const char *filename)
+int rgb565tobmp(uint8_t *buf,int width,int height, const char *filename)
 {
 	FIL file;
     FRESULT ret = FR_OK;
     uint32_t ret_len = 0;
+    uint32_t i;
+    uint16_t temp;
+    uint16_t *ptr;
     
 	BitMapFileHeader bmfHdr;    /* file header */
 	BitMapInfoHeader bmiHdr;    /* information header */
@@ -44,6 +47,15 @@ int rgb565tobmp(char *buf,int width,int height, const char *filename)
 	bmfHdr.bfReserved1 = 0;
 	bmfHdr.bfReserved2 = 0;
 	bmfHdr.bfOffBits = sizeof(BitMapFileHeader) + sizeof(BitMapInfoHeader)+ sizeof(RgbQuad) * 3;
+
+    ptr = (uint16_t*)buf;
+    
+    for (i = 0; i < width * height; i += 2)
+    {
+        temp = ptr[i];
+        ptr[i] = ptr[i + 1];
+        ptr[i + 1] = temp;
+    }
 
     if ((ret = f_open(&file, filename, FA_CREATE_ALWAYS | FA_WRITE)) != FR_OK) 
     {
