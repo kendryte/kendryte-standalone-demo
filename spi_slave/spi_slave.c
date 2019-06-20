@@ -28,7 +28,17 @@
 
 int spi_slave_receive_hook(void *data)
 {
-    printf("%d\n", ((spi_slave_command_t *)data)->err);
+    printf("spi_slave_receive_hook:\r\n");
+    printf("\t\t\t cmd: %d \r\n", ((spi_slave_command_t *)data)->cmd);
+    printf("\t\t\t err: %d \r\n", ((spi_slave_command_t *)data)->err);
+    printf("\t\t\t addr: %08X \r\n", ((spi_slave_command_t *)data)->addr);
+    printf("\t\t\t len: %d \r\n", ((spi_slave_command_t *)data)->len);
+
+    for (uint32_t i = 0; i < ((spi_slave_command_t *)data)->len; i++)
+    {
+        printf("%d\r\n", (uint8_t) * ((uint8_t *)(((spi_slave_command_t *)data)->addr) + i));
+    }
+    printf("\r\n");
     return 0;
 }
 
