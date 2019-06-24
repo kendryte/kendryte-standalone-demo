@@ -249,7 +249,7 @@ int main(void)
 
         if (g_save_flag)
         {
-            rgb565tobmp((char*)(g_ram_mux ? g_lcd_gram0 : g_lcd_gram1), 320, 240, _T("0:photo.bmp"));
+            rgb565tobmp((uint8_t*)(g_ram_mux ? g_lcd_gram0 : g_lcd_gram1), 320, 240, _T("0:photo.bmp"));
             g_save_flag = 0;
         }
         /* display pic*/        

@@ -35,6 +35,6 @@ typedef struct tagRGBQUAD{
 	uint8_t rgbReserved;/* reserved */
 }__attribute__((packed)) RgbQuad;
 
-int rgb565tobmp(char *buf,int width,int height, const char *filename);
+int rgb565tobmp(uint8_t *buf,int width,int height, const char *filename);
 
 #endif
