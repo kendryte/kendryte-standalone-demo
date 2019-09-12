@@ -35,16 +35,18 @@ static region_layer_t detect_rl;
 
 volatile uint8_t g_ai_done_flag;
 
-static int ai_done(void *ctx)
+static void ai_done(void *ctx)
 {
     g_ai_done_flag = 1;
-    return 0;
 }
 
 uint32_t g_lcd_gram0[38400] __attribute__((aligned(64)));
 uint32_t g_lcd_gram1[38400] __attribute__((aligned(64)));
+uint32_t *g_lcd_gram0_io;
+uint32_t *g_lcd_gram1_io;
 
 uint8_t g_ai_buf[320 * 240 *3] __attribute__((aligned(128)));
+uint8_t *g_ai_buf_io;
 
 #define ANCHOR_NUM 5
 
@@ -58,7 +60,7 @@ static int on_irq_dvp(void* ctx)
     if (dvp_get_interrupt(DVP_STS_FRAME_FINISH))
     {
         /* switch gram */
-        dvp_set_display_addr(g_ram_mux ? (uint32_t)g_lcd_gram0 : (uint32_t)g_lcd_gram1);
+        dvp_set_display_addr(g_ram_mux ? (uint32_t)g_lcd_gram0_io : (uint32_t)g_lcd_gram1_io);
 
         dvp_clear_interrupt(DVP_STS_FRAME_FINISH);
         g_dvp_finish_flag = 1;
@@ -207,6 +209,10 @@ static void drawboxes(uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32
 
 int main(void)
 {
+    g_lcd_gram0_io = (uint32_t *)cache_to_io((uintptr_t)g_lcd_gram0);
+    g_lcd_gram1_io = (uint32_t *)cache_to_io((uintptr_t)g_lcd_gram1);
+    g_ai_buf_io = (uint8_t *)cache_to_io((uintptr_t)g_ai_buf);
+
     /* Set CPU and dvp clk */
     sysctl_pll_set_freq(SYSCTL_PLL0, PLL0_OUTPUT_FREQ);
     sysctl_pll_set_freq(SYSCTL_PLL1, PLL1_OUTPUT_FREQ);
@@ -253,8 +259,8 @@ int main(void)
     ov2640_init();
     #endif
 
-    dvp_set_ai_addr((uint32_t)g_ai_buf, (uint32_t)(g_ai_buf + 320 * 240), (uint32_t)(g_ai_buf + 320 * 240 * 2));
-    dvp_set_display_addr((uint32_t)g_lcd_gram0);
+    dvp_set_ai_addr((uint32_t)g_ai_buf_io, (uint32_t)(g_ai_buf_io + 320 * 240), (uint32_t)(g_ai_buf_io + 320 * 240 * 2));
+    dvp_set_display_addr((uint32_t)g_lcd_gram0_io);
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 0);
     dvp_disable_auto();
 
@@ -294,21 +300,24 @@ int main(void)
             ;
 
         /* start to calculate */
-        kpu_run_kmodel(&task, g_ai_buf, DMAC_CHANNEL5, ai_done, NULL);
+        kpu_run_kmodel(&task, g_ai_buf_io, DMAC_CHANNEL5, ai_done, NULL);
         while(!g_ai_done_flag);
         g_ai_done_flag = 0;
 
         float *output;
         size_t output_size;
-        kpu_get_output(&task, 0, &output, &output_size);
-        detect_rl.input = output;
+        kpu_get_output(&task, 0, (uint8_t **)&output, &output_size);
+        float *output_cache = (float *)io_to_cache((uintptr_t)output);
+        if(!is_memory_cache(output))
+            memcpy(output_cache, output, output_size);
+        detect_rl.input = output_cache;
 
         /* start region layer */
         region_layer_run(&detect_rl, NULL);
 
         /* display pic*/
         g_ram_mux ^= 0x01;
-        lcd_draw_picture(0, 0, 320, 240, g_ram_mux ? g_lcd_gram0 : g_lcd_gram1);
+        lcd_draw_picture(0, 0, 320, 240, g_ram_mux ? g_lcd_gram0_io : g_lcd_gram1_io);
         g_dvp_finish_flag = 0;
 
         /* draw boxs */

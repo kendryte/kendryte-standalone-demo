@@ -45,6 +45,8 @@
 
 uint32_t g_lcd_gram0[38400] __attribute__((aligned(64)));
 uint32_t g_lcd_gram1[38400] __attribute__((aligned(64)));
+uint32_t *g_lcd_gram0_io;
+uint32_t *g_lcd_gram1_io;
 
 volatile uint8_t g_dvp_finish_flag;
 volatile uint8_t g_ram_mux;
@@ -60,7 +62,7 @@ static int on_irq_dvp(void* ctx)
     if (dvp_get_interrupt(DVP_STS_FRAME_FINISH))
     {
         /* switch gram */
-        dvp_set_display_addr(g_ram_mux ? (uint32_t)g_lcd_gram0 : (uint32_t)g_lcd_gram1);
+        dvp_set_display_addr(g_ram_mux ? (uint32_t)g_lcd_gram0_io : (uint32_t)g_lcd_gram1_io);
 
         dvp_clear_interrupt(DVP_STS_FRAME_FINISH);
         g_dvp_finish_flag = 1;
@@ -205,7 +207,7 @@ int main(void)
     ov2640_init();
     #endif
 
-    dvp_set_display_addr((uint32_t)g_lcd_gram0);
+    dvp_set_display_addr((uint32_t)g_lcd_gram0_io);
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 0);
     dvp_disable_auto();
 
@@ -249,11 +251,11 @@ int main(void)
 
         if (g_save_flag)
         {
-            rgb565tobmp((uint8_t*)(g_ram_mux ? g_lcd_gram0 : g_lcd_gram1), 320, 240, _T("0:photo.bmp"));
+            rgb565tobmp((uint8_t*)(g_ram_mux ? g_lcd_gram0_io : g_lcd_gram1_io), 320, 240, _T("0:photo.bmp"));
             g_save_flag = 0;
         }
         /* display pic*/        
-        lcd_draw_picture(0, 0, 320, 240, g_ram_mux ? g_lcd_gram0 : g_lcd_gram1);
+        lcd_draw_picture(0, 0, 320, 240, g_ram_mux ? g_lcd_gram0_io : g_lcd_gram1_io);
     }
 
     return 0;
