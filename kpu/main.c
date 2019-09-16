@@ -307,10 +307,7 @@ int main(void)
         float *output;
         size_t output_size;
         kpu_get_output(&task, 0, (uint8_t **)&output, &output_size);
-        float *output_cache = (float *)io_to_cache((uintptr_t)output);
-        if(!is_memory_cache(output))
-            memcpy(output_cache, output, output_size);
-        detect_rl.input = output_cache;
+        detect_rl.input = output;
 
         /* start region layer */
         region_layer_run(&detect_rl, NULL);
