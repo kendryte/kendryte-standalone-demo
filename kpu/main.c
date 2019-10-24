@@ -6,6 +6,7 @@
 #include "fpioa.h"
 #include "lcd.h"
 #include "board_config.h"
+#include "w25qxx.h"
 #if OV5640
 #include "ov5640.h"
 #endif
@@ -22,29 +23,35 @@
 #define INCBIN_STYLE INCBIN_STYLE_SNAKE
 #define INCBIN_PREFIX
 #include "incbin.h"
+#include "iomem.h"
 
 #define PLL0_OUTPUT_FREQ 800000000UL
 #define PLL1_OUTPUT_FREQ 400000000UL
 
 #define CLASS_NUMBER 20
 
+#define  LOAD_KMODEL_FROM_FLASH  1
+
+#if LOAD_KMODEL_FROM_FLASH
+#define KMODEL_SIZE (1351592)
+uint8_t *model_data;
+#else
 INCBIN(model, "yolo.kmodel");
+#endif
 
 kpu_model_context_t task;
 static region_layer_t detect_rl;
 
 volatile uint8_t g_ai_done_flag;
 
-static int ai_done(void *ctx)
+static void ai_done(void *ctx)
 {
     g_ai_done_flag = 1;
-    return 0;
 }
 
-uint32_t g_lcd_gram0[38400] __attribute__((aligned(64)));
-uint32_t g_lcd_gram1[38400] __attribute__((aligned(64)));
-
-uint8_t g_ai_buf[320 * 240 *3] __attribute__((aligned(128)));
+uint32_t *g_lcd_gram0;
+uint32_t *g_lcd_gram1;
+uint8_t *g_ai_buf;
 
 #define ANCHOR_NUM 5
 
@@ -216,6 +223,19 @@ int main(void)
     io_set_power();
     plic_init();
 
+	/* flash init */
+    printf("flash init\n");
+    w25qxx_init(3, 0);
+    w25qxx_enable_quad_mode();
+
+    g_lcd_gram0 = (uint32_t *)iomem_malloc(320 * 240 * 2);
+    g_lcd_gram1 = (uint32_t *)iomem_malloc(320 * 240 * 2);
+    g_ai_buf = (uint8_t *)iomem_malloc(320 * 240 * 3);
+#if LOAD_KMODEL_FROM_FLASH
+    model_data = (uint8_t *)iomem_malloc(KMODEL_SIZE);
+    w25qxx_read_data(0xC00000, model_data, KMODEL_SIZE, W25QXX_QUAD_FAST);
+#endif
+
     lable_init();
 
     /* LCD init */
@@ -287,6 +307,10 @@ int main(void)
     detect_rl.nms_value = 0.3;
     region_layer_init(&detect_rl, 10, 7, 125, 320, 240);
 
+    uint64_t time_last = sysctl_get_time_us();
+    uint64_t time_now = sysctl_get_time_us();
+    int time_count = 0;
+
     while (1)
     {
         /* dvp finish*/
@@ -300,7 +324,7 @@ int main(void)
 
         float *output;
         size_t output_size;
-        kpu_get_output(&task, 0, &output, &output_size);
+        kpu_get_output(&task, 0, (uint8_t **)&output, &output_size);
         detect_rl.input = output;
 
         /* start region layer */
@@ -313,6 +337,13 @@ int main(void)
 
         /* draw boxs */
         region_layer_draw_boxes(&detect_rl, drawboxes);
+        time_count ++;
+        if(time_count % 100 == 0)
+        {
+            time_now = sysctl_get_time_us();
+            printf("SPF:%fms\n", (time_now - time_last)/1000.0/100);
+            time_last = time_now;
+        }
     }
 
     return 0;

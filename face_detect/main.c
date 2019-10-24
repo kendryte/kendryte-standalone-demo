@@ -23,6 +23,8 @@
 #define INCBIN_STYLE INCBIN_STYLE_SNAKE
 #define INCBIN_PREFIX
 #include "incbin.h"
+#include "utils.h"
+#include "iomem.h"
 
 #define PLL0_OUTPUT_FREQ 800000000UL
 #define PLL1_OUTPUT_FREQ 400000000UL
@@ -41,7 +43,7 @@ static float anchor[ANCHOR_NUM * 2] = {1.889,2.5245,  2.9465,3.94056, 3.99987,5.
 
 #if LOAD_KMODEL_FROM_FLASH
 #define KMODEL_SIZE (380 * 1024)
-uint8_t model_data[KMODEL_SIZE];
+uint8_t *model_data;
 #else
 INCBIN(model, "detect.kmodel");
 #endif
@@ -193,6 +195,7 @@ int main(void)
     w25qxx_init(3, 0);
     w25qxx_enable_quad_mode();
 #if LOAD_KMODEL_FROM_FLASH
+    model_data = (uint8_t *)iomem_malloc(KMODEL_SIZE);
     w25qxx_read_data(0xA00000, model_data, KMODEL_SIZE, W25QXX_QUAD_FAST);
 #endif
     /* LCD init */
@@ -265,6 +268,9 @@ int main(void)
     sysctl_enable_irq();
     /* system start */
     printf("System start\n");
+    uint64_t time_last = sysctl_get_time_us();
+    uint64_t time_now = sysctl_get_time_us();
+    int time_count = 0;
     while (1)
     {
         g_dvp_finish_flag = 0;
@@ -288,5 +294,12 @@ int main(void)
         }
         /* display result */
         lcd_draw_picture(0, 0, 320, 240, (uint32_t *)display_image.addr);
+        time_count ++;
+        if(time_count % 100 == 0)
+        {
+            time_now = sysctl_get_time_us();
+            printf("SPF:%fms\n", (time_now - time_last)/1000.0/100);
+            time_last = time_now;
+        }
     }
 }

@@ -28,6 +28,7 @@
 #include "ff.h"
 #include "rgb2bmp.h"
 #include "gpiohs.h"
+#include "iomem.h"
 
 /* SPI and DMAC usage
  *
@@ -43,8 +44,8 @@
 
 #define KEY_GPIONUM 0
 
-uint32_t g_lcd_gram0[38400] __attribute__((aligned(64)));
-uint32_t g_lcd_gram1[38400] __attribute__((aligned(64)));
+uint32_t *g_lcd_gram0;
+uint32_t *g_lcd_gram1;
 
 volatile uint8_t g_dvp_finish_flag;
 volatile uint8_t g_ram_mux;
@@ -183,6 +184,8 @@ int main(void)
 
     lcd_clear(BLACK);
 
+    g_lcd_gram0 = (uint32_t *)iomem_malloc(320*240*2);
+    g_lcd_gram1 = (uint32_t *)iomem_malloc(320*240*2);
     /* DVP init */
     printf("DVP init\n");
     #if OV5640
@@ -255,7 +258,8 @@ int main(void)
         /* display pic*/        
         lcd_draw_picture(0, 0, 320, 240, g_ram_mux ? g_lcd_gram0 : g_lcd_gram1);
     }
-
+    iomem_free(g_lcd_gram0);
+    iomem_free(g_lcd_gram1);
     return 0;
 }
 

@@ -15,16 +15,18 @@
 
 #include <stdlib.h>
 #include "image_process.h"
+#include "iomem.h"
 
 int image_init(image_t *image)
 {
-    image->addr = malloc(image->width * image->height * image->pixel);
+    image->addr = iomem_malloc(image->width * image->height * image->pixel);
     if (image->addr == NULL)
         return -1;
+
     return 0;
 }
 
 void image_deinit(image_t *image)
 {
-    free(image->addr);
+    iomem_free(image->addr);
 }
