@@ -53,7 +53,7 @@ void tft_hard_init(void)
     init_rst();
     spi_set_clk_rate(SPI_CHANNEL, 20000000);
 #else
-    spi_set_clk_rate(SPI_CHANNEL, 64000000);
+    spi_set_clk_rate(SPI_CHANNEL, 25000000);
 #endif
 }
 
