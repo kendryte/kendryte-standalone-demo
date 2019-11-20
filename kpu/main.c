@@ -30,7 +30,7 @@
 
 #define CLASS_NUMBER 20
 
-#define  LOAD_KMODEL_FROM_FLASH  1
+#define  LOAD_KMODEL_FROM_FLASH  0
 
 #if LOAD_KMODEL_FROM_FLASH
 #define KMODEL_SIZE (1351592)
@@ -232,7 +232,7 @@ int main(void)
     g_lcd_gram1 = (uint32_t *)iomem_malloc(320 * 240 * 2);
     g_ai_buf = (uint8_t *)iomem_malloc(320 * 240 * 3);
 #if LOAD_KMODEL_FROM_FLASH
-    model_data = (uint8_t *)iomem_malloc(KMODEL_SIZE);
+    model_data = (uint8_t *)malloc(KMODEL_SIZE);
     w25qxx_read_data(0xC00000, model_data, KMODEL_SIZE, W25QXX_QUAD_FAST);
 #endif
 

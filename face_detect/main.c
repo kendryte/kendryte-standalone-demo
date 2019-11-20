@@ -39,7 +39,7 @@ static obj_info_t face_detect_info;
 #define ANCHOR_NUM 5
 static float anchor[ANCHOR_NUM * 2] = {1.889,2.5245,  2.9465,3.94056, 3.99987,5.3658, 5.155437,6.92275, 6.718375,9.01025};
 
-#define  LOAD_KMODEL_FROM_FLASH  1
+#define  LOAD_KMODEL_FROM_FLASH  0
 
 #if LOAD_KMODEL_FROM_FLASH
 #define KMODEL_SIZE (380 * 1024)
@@ -195,7 +195,7 @@ int main(void)
     w25qxx_init(3, 0);
     w25qxx_enable_quad_mode();
 #if LOAD_KMODEL_FROM_FLASH
-    model_data = (uint8_t *)iomem_malloc(KMODEL_SIZE);
+    model_data = (uint8_t *)malloc(KMODEL_SIZE);
     w25qxx_read_data(0xA00000, model_data, KMODEL_SIZE, W25QXX_QUAD_FAST);
 #endif
     /* LCD init */
