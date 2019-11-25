@@ -10,7 +10,7 @@
 #define INCBIN_HDR
 #include <limits.h>
 
-# define INCBIN_ALIGNMENT_INDEX 7
+# define INCBIN_ALIGNMENT_INDEX 8
 
 /* Lookup table of (1 << n) where `n' is `INCBIN_ALIGNMENT_INDEX' */
 #define INCBIN_ALIGN_SHIFT_0 1
@@ -21,6 +21,7 @@
 #define INCBIN_ALIGN_SHIFT_5 32
 #define INCBIN_ALIGN_SHIFT_6 64
 #define INCBIN_ALIGN_SHIFT_7 128
+#define INCBIN_ALIGN_SHIFT_8 256
 
 /* Actual alignment value */
 #define INCBIN_ALIGNMENT \

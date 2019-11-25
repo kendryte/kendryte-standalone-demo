@@ -232,8 +232,11 @@ int main(void)
     g_lcd_gram1 = (uint32_t *)iomem_malloc(320 * 240 * 2);
     g_ai_buf = (uint8_t *)iomem_malloc(320 * 240 * 3);
 #if LOAD_KMODEL_FROM_FLASH
-    model_data = (uint8_t *)malloc(KMODEL_SIZE);
-    w25qxx_read_data(0xC00000, model_data, KMODEL_SIZE, W25QXX_QUAD_FAST);
+    model_data = (uint8_t *)malloc(KMODEL_SIZE + 255);
+    uint8_t *model_data_align = (uint8_t *)(((uintptr_t)model_data+255)&(~255));
+    w25qxx_read_data(0xC00000, model_data_align, KMODEL_SIZE, W25QXX_QUAD_FAST);
+#else
+    uint8_t *model_data_align = model_data;
 #endif
 
     lable_init();
@@ -295,7 +298,7 @@ int main(void)
     dvp_config_interrupt(DVP_CFG_START_INT_ENABLE | DVP_CFG_FINISH_INT_ENABLE, 1);
 
     /* init kpu */
-    if (kpu_load_kmodel(&task, model_data) != 0)
+    if (kpu_load_kmodel(&task, model_data_align) != 0)
     {
         printf("\nmodel init error\n");
         while (1);
