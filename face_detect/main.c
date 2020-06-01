@@ -119,7 +119,7 @@ static void io_set_power(void)
         sysctl_set_power_mode(SYSCTL_POWER_BANK7, SYSCTL_POWER_V18);
 #else
         /* Set dvp and spi pin to 1.8V */
-        sysctl_set_power_mode(SYSCTL_POWER_BANK0, SYSCTL_POWER_V18);
+        // sysctl_set_power_mode(SYSCTL_POWER_BANK0, SYSCTL_POWER_V18);
         sysctl_set_power_mode(SYSCTL_POWER_BANK1, SYSCTL_POWER_V18);
         sysctl_set_power_mode(SYSCTL_POWER_BANK2, SYSCTL_POWER_V18);
 #endif
